@@ -1,525 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inverted Pendulum – Swing-up, LQR and Disturbance Recovery</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linear Cart–Pole | Engineering Design Simulator</title>
 <style>
-  :root{
-    --bg:#0c131d; --panel:#131d2b; --panel2:#182536; --line:#26374d;
-    --text:#e6edf5; --dim:#8ea2b8;
-    --cart:#5cc8ff; --bob:#ff6b57; --amber:#ffb340; --ok:#52d6a0; --warn:#ffb340;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--text);
-    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
-  .mono{font-family:ui-monospace,"SF Mono",Consolas,Menlo,monospace;font-variant-numeric:tabular-nums}
-  header{padding:18px 22px 6px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;justify-content:space-between}
-  h1{margin:0;font-size:20px;font-weight:650;letter-spacing:.2px}
-  header p{margin:0;color:var(--dim);font-size:13px}
-  main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;padding:10px 22px 22px;max-width:1500px;margin:0 auto}
-  @media (max-width:1000px){main{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
-  .card h2{margin:0 0 10px;font-size:14px;font-weight:650}
-  .stage{position:relative;padding:0;overflow:hidden}
-  #sim{display:block;width:100%;height:auto;background:#080d14}
-  .badge{position:absolute;left:12px;top:12px;padding:6px 11px;border-radius:6px;font-size:13px;font-weight:600;
-    background:rgba(8,13,20,.85);border:1px solid var(--line)}
-  .badge.swing{color:var(--amber);border-color:#6b4c14}
-  .badge.lqr{color:var(--ok);border-color:#1d5f48}
-  .hud{position:absolute;right:12px;top:12px;background:rgba(8,13,20,.85);border:1px solid var(--line);
-    border-radius:6px;padding:8px 11px;font-size:12px;line-height:1.55;color:var(--dim);white-space:pre}
-  .hud b{color:var(--text);font-weight:600}
-  .side{display:flex;flex-direction:column;gap:14px}
-  label.f{display:block;font-size:12px;color:var(--dim);margin:0 0 5px}
-  .row{display:flex;gap:8px;align-items:stretch}
-  input[type=number],select{width:100%;background:#0a121c;border:1px solid var(--line);color:var(--text);
-    border-radius:7px;padding:9px 10px;font-size:15px}
-  input[type=number]:focus,select:focus,button:focus-visible{outline:2px solid var(--cart);outline-offset:1px}
-  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .seg button{flex:1;background:#0a121c;color:var(--dim);border:0;padding:11px 8px;font-size:14px;cursor:pointer;font-weight:600}
-  .seg button+button{border-left:1px solid var(--line)}
-  .seg button.on{background:var(--amber);color:#1c1200}
-  .apply{width:100%;margin-top:12px;padding:13px;border:0;border-radius:8px;background:var(--bob);color:#1f0a06;
-    font-size:15px;font-weight:700;cursor:pointer}
-  .apply:active{transform:translateY(1px)}
-  .hint{font-size:12px;color:var(--dim);margin:8px 0 0;line-height:1.45}
-  .btns{display:flex;gap:8px;flex-wrap:wrap}
-  .btns button{flex:1;min-width:80px;background:var(--panel2);color:var(--text);border:1px solid var(--line);
-    border-radius:7px;padding:9px 10px;font-size:13px;cursor:pointer}
-  .btns button:hover{border-color:var(--cart)}
-  .chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--dim);margin-top:10px}
-  #log{height:150px;overflow:auto;font-size:12px;line-height:1.5;color:var(--dim);background:#0a121c;
-    border:1px solid var(--line);border-radius:7px;padding:8px}
-  #log .d{color:var(--amber)} #log .c{color:var(--ok)} #log .s{color:#ff9d8f}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .stat{background:#0a121c;border:1px solid var(--line);border-radius:7px;padding:8px 10px}
-  .stat span{display:block;font-size:11px;color:var(--dim)}
-  .stat b{font-size:17px;font-weight:600}
-  .charts{grid-column:1 / -1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-  @media (max-width:1000px){.charts{grid-template-columns:1fr}}
-  .charts canvas{width:100%;height:170px;display:block}
-  .legend{display:flex;gap:14px;font-size:12px;color:var(--dim);margin-top:6px}
-  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-</style>
-</head>
+:root{--bg:#0a1018;--panel:#121d2a;--panel2:#18283a;--line:#2b3d52;--text:#e7eef7;--muted:#9aadc1;--cyan:#60d3ff;--orange:#ff9e42;--red:#ff6d5e;--green:#5ee0a0;--purple:#c4a0ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}header{padding:20px 24px 10px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}h1{font-size:22px;margin:0}header p{color:var(--muted);margin:5px 0 0}.pill{font-size:11px;color:var(--green);border:1px solid #28684e;padding:5px 9px;border-radius:99px}main{max-width:1600px;margin:auto;padding:12px 20px 28px;display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}.stage{position:relative;padding:0;overflow:hidden}.stage canvas{display:block;width:100%;height:auto;background:#080d13}.hud{position:absolute;right:12px;top:12px;background:#080d13dd;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:12px/1.6 ui-monospace,Consolas,monospace;white-space:pre;color:var(--muted)}.badge{position:absolute;top:12px;left:12px;background:#080d13dd;border:1px solid var(--line);padding:7px 10px;border-radius:7px;font-weight:700;color:var(--orange)}.side{display:flex;flex-direction:column;gap:12px}.card h2{font-size:14px;margin:0 0 12px}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px}.section-title small{font-weight:400;color:var(--muted)}.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;font-size:11px;color:var(--muted);margin:0 0 5px}.field input,.field select{width:100%;min-width:0;background:#08111b;border:1px solid var(--line);color:var(--text);border-radius:7px;padding:9px 8px;font-size:13px}.field input:focus,.field select:focus,button:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}.unit{font-size:10px;color:#758ba1;margin-top:3px}.full{grid-column:1/-1}details{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}details summary{cursor:pointer;font-weight:650;font-size:13px;margin-bottom:12px}button{cursor:pointer;border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--text);padding:9px 11px;font-weight:600}.btnrow{display:flex;gap:8px;flex-wrap:wrap}.btnrow button{flex:1}.primary{background:var(--orange);color:#241303;border-color:var(--orange)}.danger{color:var(--red)}.hint{font-size:11px;color:var(--muted);line-height:1.5;margin:10px 0 0}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:#08111b;border:1px solid var(--line);border-radius:8px;padding:9px}.stat span{display:block;color:var(--muted);font-size:10px}.stat b{font:600 17px ui-monospace,Consolas,monospace}.status{font-size:12px;color:var(--muted);margin-top:10px;min-height:18px}.plots{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.plots canvas{width:100%;height:170px;display:block}.legend{font-size:11px;color:var(--muted);margin-top:4px}.warning{border-left:3px solid var(--orange);padding:8px 10px;background:#2a2117;color:#f4d5ac;font-size:11px;line-height:1.5;border-radius:4px}.log{height:120px;overflow:auto;background:#08111b;border:1px solid var(--line);border-radius:7px;padding:8px;font:11px/1.5 ui-monospace,Consolas,monospace;color:var(--muted)}.log div{margin-bottom:3px}.log .good{color:var(--green)}.log .event{color:var(--orange)}.log .bad{color:var(--red)}.inlinecheck{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;margin-top:10px}.inlinecheck input{accent-color:var(--orange)}@media(max-width:1050px){main{grid-template-columns:1fr}.plots{grid-template-columns:1fr}.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){header{padding:16px}main{padding:8px;grid-template-columns:1fr}.side{display:flex}.fields{gap:8px}.hud{font-size:10px;padding:6px}.badge{font-size:11px}}
+</style></head>
 <body>
-<header>
-  <h1>Inverted pendulum: swing-up, LQR balance, disturbance recovery</h1>
-  <p>Hangs at the bottom, swings itself up, balances upright. Hit it and watch it recover.</p>
-</header>
-
+<header><div><h1>Linear Cart–Pole · Engineering Design Simulator</h1><p>Configurable mechanics · DC motor drive · encoder feedback · LQR and energy swing-up</p></div><span class="pill">MODEL-BASED STUDY · NOT HARDWARE VALIDATION</span></header>
 <main>
-  <section class="card stage" aria-label="Simulation">
-    <canvas id="sim"></canvas>
-    <div class="badge swing" id="badge">SWING-UP (energy pumping)</div>
-    <div class="hud mono" id="hud"></div>
-  </section>
-
-  <aside class="side">
-    <section class="card">
-      <h2>Apply a disturbance</h2>
-
-      <label class="f" for="kind">Where it hits</label>
-      <select id="kind">
-        <option value="bob">Push on the pendulum bob (force, N)</option>
-        <option value="kick">Angular kick at the pivot (rad/s)</option>
-        <option value="cart">Shove on the cart (impulse, N·s)</option>
-      </select>
-
-      <div style="height:12px"></div>
-      <label class="f" for="mag" id="magLabel">Force (N), applied for 0.1 s</label>
-      <input id="mag" type="number" min="0" step="0.5" value="4" inputmode="decimal">
-
-      <div style="height:12px"></div>
-      <label class="f">Direction</label>
-      <div class="seg" role="group" aria-label="Direction">
-        <button id="dirL" type="button">◀ Left</button>
-        <button id="dirR" type="button" class="on">Right ▶</button>
-      </div>
-
-      <button class="apply" id="apply" type="button">Apply disturbance</button>
-      <p class="hint" id="hint">Shortcuts: ← applies Left, → applies Right, Space pauses, R restarts. Try 4 N first, then 8 N and above to knock it out of the balance zone.</p>
-    </section>
-
-    <section class="card">
-      <h2>Status</h2>
-      <div class="stats">
-        <div class="stat"><span>Top error</span><b class="mono" id="sErr">–</b></div>
-        <div class="stat"><span>Last recovery time</span><b class="mono" id="sRec">–</b></div>
-        <div class="stat"><span>Disturbances applied</span><b class="mono" id="sCnt">0</b></div>
-        <div class="stat"><span>Time upright</span><b class="mono" id="sUp">0.0 s</b></div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Simulation</h2>
-      <label class="f" for="speed">Playback speed</label>
-      <select id="speed">
-        <option value="0.25">0.25×</option>
-        <option value="0.5" selected>0.5× (same as the MATLAB script)</option>
-        <option value="1">1× (real time)</option>
-        <option value="2">2×</option>
-        <option value="4">4×</option>
-      </select>
-      <div class="btns" style="margin-top:10px">
-        <button id="pause" type="button">Pause</button>
-        <button id="restart" type="button">Restart</button>
-      </div>
-      <label class="chk"><input type="checkbox" id="script"> Also run the MATLAB disturbance schedule (15, 25, 35, 45, 55 s)</label>
-    </section>
-
-    <section class="card">
-      <h2>Event log</h2>
-      <div id="log" class="mono" aria-live="polite"></div>
-    </section>
-  </aside>
-
-  <section class="card"><h2>Top error (deg)</h2><canvas id="c1"></canvas>
-    <div class="legend"><span><i style="background:var(--bob)"></i>angle from upright</span><span><i style="background:var(--amber)"></i>LQR engaged</span></div></section>
-  <section class="card"><h2>Cart position (m)</h2><canvas id="c2"></canvas>
-    <div class="legend"><span><i style="background:var(--cart)"></i>x</span><span><i style="background:#ff5c5c"></i>track limit</span></div></section>
-  <section class="card"><h2>Control effort</h2><canvas id="c3"></canvas>
-    <div class="legend"><span><i style="background:var(--cart)"></i>cart force (÷ limit)</span><span><i style="background:#c792ea"></i>pivot torque (÷ limit)</span></div></section>
+<section class="card stage"><canvas id="sim"></canvas><div class="badge" id="badge">SWING-UP / RELEASE</div><div class="hud" id="hud"></div></section>
+<aside class="side">
+<section class="card"><div class="section-title"><h2>Mechanical design</h2><small>SI units</small></div><div class="fields">
+<div class="field"><label for="cartMass">Cart mass</label><input id="cartMass" type="number" min="0.05" max="20" step="0.05" value="0.50"><div class="unit">kg · excluding pendulum</div></div>
+<div class="field"><label for="cartWidth">Cart width</label><input id="cartWidth" type="number" min="0.05" max="1" step="0.01" value="0.28"><div class="unit">m · along the rail</div></div>
+<div class="field"><label for="cartHeight">Cart body height</label><input id="cartHeight" type="number" min="0.03" max="0.5" step="0.01" value="0.13"><div class="unit">m · body only</div></div>
+<div class="field"><label for="wheelDia">Cart wheel diameter</label><input id="wheelDia" type="number" min="0.01" max="0.2" step="0.005" value="0.044"><div class="unit">m · visual dimension</div></div>
+<div class="field"><label for="rodMass">Pendulum rod mass</label><input id="rodMass" type="number" min="0" max="10" step="0.01" value="0.08"><div class="unit">kg · uniform rod approximation</div></div>
+<div class="field"><label for="length">Pivot to bob centre</label><input id="length" type="number" min="0.05" max="2" step="0.01" value="0.60"><div class="unit">m · effective pendulum length</div></div>
+<div class="field"><label for="rodDia">Rod diameter</label><input id="rodDia" type="number" min="0.002" max="0.1" step="0.001" value="0.008"><div class="unit">m · display / rod mass is entered</div></div>
+<div class="field"><label for="bobMass">Bob mass</label><input id="bobMass" type="number" min="0.01" max="10" step="0.01" value="0.25"><div class="unit">kg</div></div>
+<div class="field"><label for="bobDia">Bob diameter</label><input id="bobDia" type="number" min="0.01" max="0.3" step="0.005" value="0.06"><div class="unit">m · solid sphere inertia</div></div>
+<div class="field"><label for="track">Usable track half-length</label><input id="track" type="number" min="0.2" max="5" step="0.05" value="1.50"><div class="unit">m · from centre to end stop</div></div>
+<div class="field"><label for="gravity">Gravity</label><input id="gravity" type="number" min="1" max="20" step="0.01" value="9.81"><div class="unit">m/s²</div></div>
+<div class="field"><label for="cartFriction">Cart viscous friction b</label><input id="cartFriction" type="number" min="0" max="10" step="0.01" value="0.10"><div class="unit">N·s/m</div></div>
+<div class="field"><label for="pivotFriction">Pivot viscous friction c</label><input id="pivotFriction" type="number" min="0" max="2" step="0.001" value="0.004"><div class="unit">N·m·s/rad</div></div>
+</div>
+<details open><summary>Motor, transmission & drive limits</summary><div class="fields">
+<div class="field"><label for="voltage">Supply / max motor voltage</label><input id="voltage" type="number" min="1" max="60" step="0.5" value="12"><div class="unit">V · bidirectional drive assumed</div></div>
+<div class="field"><label for="resistance">Armature resistance</label><input id="resistance" type="number" min="0.05" max="100" step="0.1" value="2.4"><div class="unit">Ω</div></div>
+<div class="field"><label for="kt">Torque constant Kt</label><input id="kt" type="number" min="0.001" max="5" step="0.001" value="0.025"><div class="unit">N·m/A</div></div>
+<div class="field"><label for="noLoad">No-load speed at rated voltage</label><input id="noLoad" type="number" min="100" max="30000" step="100" value="15000"><div class="unit">rpm · used to estimate back-EMF constant; illustrative until a motor is selected</div></div>
+<div class="field"><label for="gear">Gear ratio</label><input id="gear" type="number" min="1" max="500" step="1" value="20"><div class="unit">motor rev : pulley rev</div></div>
+<div class="field"><label for="efficiency">Gearbox efficiency</label><input id="efficiency" type="number" min="0.1" max="1" step="0.01" value="0.75"><div class="unit">0–1</div></div>
+<div class="field"><label for="pulley">Drive pulley radius</label><input id="pulley" type="number" min="0.003" max="0.2" step="0.001" value="0.020"><div class="unit">m · pinion/sprocket equivalent</div></div>
+<div class="field"><label for="currentLimit">Current limit</label><input id="currentLimit" type="number" min="0.1" max="100" step="0.1" value="5"><div class="unit">A · motor/driver limit</div></div>
+<div class="field"><label for="forceSlew">Force slew limit</label><input id="forceSlew" type="number" min="0.1" max="10000" step="10" value="1000"><div class="unit">N/s · 10000 approximates no slew limit</div></div>
+<div class="field"><label for="motorCpr">Motor encoder resolution</label><input id="motorCpr" type="number" min="1" max="100000" step="1" value="600"><div class="unit">counts/motor revolution (quadrature counts)</div></div>
+<div class="field"><label for="angleCpr">Pendulum encoder resolution</label><input id="angleCpr" type="number" min="1" max="100000" step="1" value="2048"><div class="unit">counts/pivot revolution</div></div>
+<div class="field"><label for="driverCurrent">Driver current limit</label><input id="driverCurrent" type="number" min="0.1" max="100" step="0.1" value="5"><div class="unit">A · effective limit is the lower current limit</div></div>
+</div><p class="hint">DC motor approximation: back-EMF from no-load speed, current from (V − Ke·ω)/R, torque from Kt·I, then gear ratio, efficiency and pulley radius. Confirm motor datasheet values before using this for hardware selection.</p></details>
+<details open><summary>Controller & sensor settings</summary><div class="fields">
+<div class="field"><label for="sample">Control sample time</label><input id="sample" type="number" min="0.002" max="0.1" step="0.001" value="0.010"><div class="unit">s · controller update period</div></div>
+<div class="field"><label for="qX">LQR Q: cart position</label><input id="qX" type="number" min="0.01" max="10000" step="1" value="25"><div class="unit">state penalty</div></div>
+<div class="field"><label for="qV">LQR Q: cart velocity</label><input id="qV" type="number" min="0.01" max="10000" step="0.5" value="3"><div class="unit">state penalty</div></div>
+<div class="field"><label for="qA">LQR Q: angle error</label><input id="qA" type="number" min="0.01" max="10000" step="5" value="180"><div class="unit">state penalty</div></div>
+<div class="field"><label for="qW">LQR Q: angular velocity</label><input id="qW" type="number" min="0.01" max="10000" step="1" value="18"><div class="unit">state penalty</div></div>
+<div class="field"><label for="rU">LQR R: force effort</label><input id="rU" type="number" min="0.001" max="1000" step="0.1" value="1.2"><div class="unit">input penalty</div></div>
+<div class="field"><label for="catchAngle">LQR catch angle</label><input id="catchAngle" type="number" min="1" max="45" step="1" value="14"><div class="unit">degrees from upright</div></div>
+<div class="field"><label for="catchRate">Catch angular speed</label><input id="catchRate" type="number" min="0.1" max="30" step="0.1" value="4.5"><div class="unit">rad/s</div></div>
+<div class="field"><label for="energyGain">Swing-up energy gain</label><input id="energyGain" type="number" min="0.01" max="100" step="0.1" value="7"><div class="unit">acceleration command gain per joule; tuning parameter</div></div><div class="field"><label for="centerX">Cart-centering position gain</label><input id="centerX" type="number" min="0" max="20" step="0.1" value="0.3"><div class="unit">m/s² per metre</div></div><div class="field"><label for="centerV">Cart-centering velocity gain</label><input id="centerV" type="number" min="0" max="20" step="0.1" value="0.5"><div class="unit">1/s · damping term</div></div>
+<div class="field"><label for="startupForce">Startup excitation force</label><input id="startupForce" type="number" min="-20" max="20" step="0.1" value="1.0"><div class="unit">N · brief cart push to break exact symmetry</div></div><div class="field"><label for="startupDuration">Startup excitation duration</label><input id="startupDuration" type="number" min="0" max="0.5" step="0.01" value="0.08"><div class="unit">s · applied through the motor model</div></div><div class="field"><label for="initialAngle">Initial angle from hanging</label><input id="initialAngle" type="number" min="-180" max="180" step="1" value="0"><div class="unit">degrees · 0° means exactly hanging</div></div>
+</div><p class="hint">LQR gain is recalculated from the linearised model when you press Apply design. Swing-up uses energy shaping and the nonlinear equations to calculate the requested cart force; motor voltage/current, force slew and track limits still apply. At exact hanging with zero motion, the controller has no direction to start pumping, so a transparent, user-configurable startup excitation breaks the symmetry and is still limited by the motor model.</p></details>
+<div class="btnrow" style="margin-top:12px"><button class="primary" id="applyDesign">Apply design & recalculate LQR</button><button id="startUpright">Start upright (test LQR)</button><button id="reset">Restart from hanging</button></div><p class="hint">Changing a parameter does not change the running model until you apply the design. Applying the design restarts the run for a clean comparison.</p>
+</section>
+<section class="card"><h2>Disturbance & experiment</h2><div class="fields">
+<div class="field"><label for="distType">Disturbance</label><select id="distType"><option value="bob">Horizontal force on bob</option><option value="cart">Impulse on cart</option><option value="kick">Angular velocity kick</option></select></div>
+<div class="field"><label for="distMag">Magnitude</label><input id="distMag" type="number" min="0.01" max="100" step="0.5" value="4"></div>
+<div class="field"><label for="distDur">Bob force duration</label><input id="distDur" type="number" min="0.01" max="2" step="0.01" value="0.10"><div class="unit">s</div></div>
+<div class="field"><label for="speed">Playback speed</label><select id="speed"><option value="0.25">0.25×</option><option value="0.5" selected>0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
+</div><div class="btnrow" style="margin-top:10px"><button id="left">◀ Push left</button><button class="primary" id="right">Push right ▶</button><button id="pause">Pause</button></div><label class="inlinecheck"><input id="schedule" type="checkbox"> Run repeatable disturbance schedule at 8, 14, 20, 26, 32 s</label><p class="hint">Use the same initial state and disturbance schedule when comparing controllers. “Disturbance” is a test input, not a measured real-world load.</p></section>
+<section class="card"><h2>Run metrics</h2><div class="stats"><div class="stat"><span>Absolute angle error</span><b id="mErr">—</b></div><div class="stat"><span>Last recovery time</span><b id="mRec">—</b></div><div class="stat"><span>Cart position</span><b id="mX">—</b></div><div class="stat"><span>Peak motor current</span><b id="mI">—</b></div><div class="stat"><span>Peak force request / applied</span><b id="mF">—</b></div><div class="stat"><span>Time near upright</span><b id="mUp">0.0 s</b></div></div><div class="status" id="status">Initialising model…</div></section>
+<section class="card"><h2>Event log</h2><div id="log" class="log"></div></section>
+</aside>
+<section class="plots"><div class="card"><h2>Angle error from upright (degrees)</h2><canvas id="c1"></canvas><div class="legend">Red = measured angle error · green = upright target</div></div><div class="card"><h2>Cart position (m)</h2><canvas id="c2"></canvas><div class="legend">Cyan = cart position · red dashed = track ends</div></div><div class="card"><h2>Motor / control effort</h2><canvas id="c3"></canvas><div class="legend">Orange = applied cart force / limit · purple = motor current / limit</div></div></section>
+<section class="card full"><div class="warning"><b>Engineering limitations:</b> this is a transparent lumped-parameter simulation, not a validated digital twin. It assumes a rigid uniform rod, a solid spherical bob, viscous friction, a quasi-static DC motor model, ideal bidirectional voltage drive, and no backlash, belt elasticity, wheel slip, driver dead-zone, current-loop dynamics, sensor noise, structural flex, or MCU/communication delay beyond sample-and-hold. Track end-stops are simplified. Validate equations and parameters against the actual rig before fabrication or safety decisions.</div></section>
 </main>
-
 <script>
-"use strict";
-/* =====================================================================
-   BACKEND — direct port of inverted_pendulum_robust.m
-   theta = 0 hanging down, theta = pi upright.
-   ===================================================================== */
-const P = {
-  M:0.50, m:0.25, l:0.60, g:9.81, b:0.10, c:0.004,
-  u_max:9, tau_max:0.25, x_track:1.50, x_soft:1.15
-};
-const DT = 0.002;
-
-/* ---------- tiny matrix helpers ---------- */
-const zeros=(r,c)=>Array.from({length:r},()=>new Array(c).fill(0));
-const mul=(a,b)=>{const r=a.length,n=b.length,c=b[0].length,o=zeros(r,c);
-  for(let i=0;i<r;i++)for(let k=0;k<n;k++){const v=a[i][k];if(v!==0)for(let j=0;j<c;j++)o[i][j]+=v*b[k][j];}return o;};
+'use strict';
+const $=id=>document.getElementById(id), num=id=>Number($(id).value);
+const DT=0.002, WINDOW=20;
+const inputIds=['cartMass','cartWidth','cartHeight','wheelDia','rodMass','length','rodDia','bobMass','bobDia','track','gravity','cartFriction','pivotFriction','voltage','resistance','kt','noLoad','gear','efficiency','pulley','currentLimit','forceSlew','motorCpr','angleCpr','driverCurrent','sample','qX','qV','qA','qW','rU','catchAngle','catchRate','energyGain','centerX','centerV','startupForce','startupDuration','initialAngle'];
+let P={},K=[0,0,0,0],sim=null,paused=false,last=performance.now(),frame=0,dpr=1,CW=900,CH=450;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),wrapPi=a=>Math.atan2(Math.sin(a),Math.cos(a)),deg=r=>r*180/Math.PI;
+function readDesign(){
+ const g=id=>num(id); P={M:g('cartMass'),cartW:g('cartWidth'),cartH:g('cartHeight'),wheelD:g('wheelDia'),mr:g('rodMass'),L:g('length'),rodD:g('rodDia'),mb:g('bobMass'),bobD:g('bobDia'),track:g('track'),g:g('gravity'),b:g('cartFriction'),c:g('pivotFriction'),V:g('voltage'),R:g('resistance'),Kt:g('kt'),rpm:g('noLoad'),G:g('gear'),eta:g('efficiency'),r:g('pulley'),Imax:Math.min(g('currentLimit'),g('driverCurrent')),slew:g('forceSlew'),motorCpr:g('motorCpr'),angleCpr:g('angleCpr'),Ts:g('sample'),Q:[g('qX'),g('qV'),g('qA'),g('qW')],Rcost:g('rU'),catchAngle:g('catchAngle')*Math.PI/180,catchRate:g('catchRate'),kE:g('energyGain'),centerX:g('centerX'),centerV:g('centerV'),kickF:g('startupForce'),kickDur:g('startupDuration'),theta0:g('initialAngle')*Math.PI/180};
+ P.mp=P.mb+P.mr; P.h=P.mb*P.L+P.mr*P.L/2; P.Ip=P.mb*P.L*P.L+(2/5)*P.mb*(P.bobD/2)**2+P.mr*(P.L*P.L/3+(P.rodD/2)**2/4); P.J=P.Ip; P.Etop=2*P.g*P.h; P.Ke=P.V/(P.rpm*2*Math.PI/60); P.xCounts=P.motorCpr*P.G/(2*Math.PI*P.r); P.angleCounts=P.angleCpr/(2*Math.PI); P.Fmax=P.eta*P.G*P.Kt*P.Imax/P.r;
+}
+const zeros=(r,c)=>Array.from({length:r},()=>Array(c).fill(0));
+const mul=(a,b)=>{let o=zeros(a.length,b[0].length);for(let i=0;i<a.length;i++)for(let k=0;k<b.length;k++)for(let j=0;j<b[0].length;j++)o[i][j]+=a[i][k]*b[k][j];return o};
 const tr=a=>a[0].map((_,j)=>a.map(r=>r[j]));
 const addM=(a,b,s=1)=>a.map((r,i)=>r.map((v,j)=>v+s*b[i][j]));
-const scl=(a,s)=>a.map(r=>r.map(v=>v*s));
-
-/* ---------- linearisation about the top ---------- */
-const Mmat=[[P.M+P.m, -P.m*P.l],[-P.m*P.l, P.m*P.l*P.l]];
-const det=Mmat[0][0]*Mmat[1][1]-Mmat[0][1]*Mmat[1][0];
-const Minv=[[Mmat[1][1]/det,-Mmat[0][1]/det],[-Mmat[1][0]/det,Mmat[0][0]/det]];
-const Cm=[[0,-P.b,0,0],[0,0,P.m*P.g*P.l,-P.c]];
-const A=zeros(4,4); A[0][1]=1; A[2][3]=1;
-{ const MC=mul(Minv,Cm); A[1]=MC[0].slice(); A[3]=MC[1].slice(); }
-const B=zeros(4,2); B[1][0]=Minv[0][0]; B[1][1]=Minv[0][1]; B[3][0]=Minv[1][0]; B[3][1]=Minv[1][1];
-
-const Q=[[25,0,0,0],[0,3,0,0],[0,0,180,0],[0,0,0,18]];
-const Rdiag=[1.2,0.15];
-
-/* LQR gain: solve the CARE by integrating the Riccati flow to steady state
-   (no toolbox, no eigen-solver needed). K = R^-1 B' X */
-function lqrGain(A,B,Q,Rd){
-  const Rinv=[[1/Rd[0],0],[0,1/Rd[1]]];
-  const G=mul(mul(B,Rinv),tr(B));
-  const At=tr(A);
-  const f=X=>addM(addM(addM(mul(At,X),mul(X,A)),mul(mul(X,G),X),-1),Q);
-  let X=zeros(4,4); const h=0.001;
-  for(let it=0;it<200000;it++){
-    const k1=f(X),k2=f(addM(X,k1,h/2)),k3=f(addM(X,k2,h/2)),k4=f(addM(X,k3,h));
-    const S=addM(addM(addM(k1,k2,2),k3,2),k4,1);
-    const Xn=addM(X,S,h/6);
-    if(it%200===0){let mx=0;for(let i=0;i<4;i++)for(let j=0;j<4;j++)mx=Math.max(mx,Math.abs(Xn[i][j]-X[i][j]));
-      X=Xn; if(mx<1e-11)break;} else X=Xn;
+function calcLQR(){
+ const a=P.M+P.mp,d=P.Ip,bb=-P.h,det=a*d-bb*bb;
+ if(det<=1e-10)throw Error('Invalid inertia/mass combination.');
+ const inv=[[d/det,-bb/det],[-bb/det,a/det]], C=[[0,-P.b,0,0],[0,0,P.g*P.h,-P.c]], A=zeros(4,4);A[0][1]=1;A[2][3]=1;
+ const MC=mul(inv,C);A[1]=MC[0];A[3]=MC[1];const B=zeros(4,1);B[1][0]=inv[0][0];B[3][0]=inv[1][0];
+ const Ad=A.map((row,i)=>row.map((v,j)=>v*P.Ts+(i===j?1:0))),Bd=B.map(row=>row.map(v=>v*P.Ts));
+ const Q=zeros(4,4);P.Q.forEach((v,i)=>Q[i][i]=v);const R=P.Rcost;
+ // Kleinman policy iteration: solve the discrete Lyapunov equation for a stabilising
+ // initial gain, then improve the gain. This avoids unstable forward Riccati integration.
+ const starts=[[-4.12,-5.41,39.02,8.96],[-2,-3,20,5],[-8,-10,55,12],[-1,-1,10,2]];
+ let finalK=null,lastError='no stabilising initial gain found';
+ for(const initial of starts){
+  let gain=initial.slice(),failed=false;
+  for(let policy=0;policy<40;policy++){
+   const Acl=addM(Ad,mul(Bd,[gain]),-1);let X=addM(Q,mul(mul(tr([gain]),[[R]]),[gain]));
+   let lyapOK=false;
+   for(let it=0;it<5000;it++){
+    const Xn=addM(addM(Q,mul(mul(tr([gain]),[[R]]),[gain])),mul(mul(tr(Acl),X),Acl));
+    let err=0;for(let i=0;i<4;i++)for(let j=0;j<4;j++)err=Math.max(err,Math.abs(Xn[i][j]-X[i][j]));
+    X=Xn;if(!X.flat().every(Number.isFinite)||Math.max(...X.flat().map(Math.abs))>1e12){failed=true;lastError='initial feedback was not stabilising';break;}
+    if(err<1e-8){lyapOK=true;break;}
+   }
+   if(failed||!lyapOK){failed=true;lastError='Lyapunov iteration did not converge for the selected model';break;}
+   const BtXAd=mul(mul(tr(Bd),X),Ad),BtXB=mul(mul(tr(Bd),X),Bd)[0][0],newGain=BtXAd[0].map(v=>v/(R+BtXB));
+   const delta=Math.max(...newGain.map((v,i)=>Math.abs(v-gain[i])));gain=newGain;
+   if(!gain.every(Number.isFinite)){failed=true;lastError='non-finite gain';break;}
+   if(delta<1e-6){finalK=gain;break;}
   }
-  return mul(mul(Rinv,tr(B)),X);
+  if(finalK)break;
+ }
+ if(!finalK)throw Error('LQR calculation failed: '+lastError+'. Try less extreme parameter values.');
+ K=finalK;P.A=A;P.B=B;P.K=K;
 }
-const K=lqrGain(A,B,Q,Rdiag);
-
-/* ---------- swing-up gains + hysteresis (same values as MATLAB) ---------- */
-const S={kE:5.0,ktau:2.2,kx:2.0,kv:3.0,Etop:2*P.m*P.g*P.l};
-const H={catch_phi:14*Math.PI/180,catch_rate:4.5,catch_x:1.05,drop_phi:32*Math.PI/180,drop_rate:9.0};
-const DIST=[[15,2.5,0],[25,-4,0],[35,0,2],[45,5.5,0],[55,-3,1.5]];
-
-const clamp=(v,l)=>Math.max(-l,Math.min(l,v));
-const wrapPi=a=>((a+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;
-const deg=r=>r*180/Math.PI;
-
-function swingupLaw(z){
-  const xd=z[1],th=z[2],thd=z[3],x=z[0];
-  const E=0.5*P.m*P.l*P.l*thd*thd+P.m*P.g*P.l*(1-Math.cos(th));
-  const Et=E-S.Etop;
-  let tau=-S.ktau*Et*thd;
-  const aPump=S.kE*Et*thd*Math.cos(th);
-  const aCenter=-S.kx*x-S.kv*xd;
-  const aDes=aPump+aCenter;
-  let u=(P.M+P.m)*aDes-P.m*P.l*Math.sin(th)*thd*thd+P.b*xd;
-  if(Math.abs(wrapPi(th-Math.PI))<25*Math.PI/180 && Math.abs(Et)<0.15*S.Etop){
-    u=(P.M+P.m)*aCenter+P.b*xd; tau=0.35*tau;
-  }
-  return [u,tau];
+function note(msg,cls=''){const el=$('log'),d=document.createElement('div');d.textContent=msg;if(cls)d.className=cls;el.appendChild(d);while(el.children.length>80)el.removeChild(el.firstChild);el.scrollTop=el.scrollHeight;}
+function resetSim(startUpright=false){const th=startUpright?(Math.PI+2*Math.PI/180):P.theta0;sim={z:[0,0,wrapPi(th),0],t:0,k:0,mode:startUpright?1:0,startUpright,cmd:0,force:0,voltage:0,current:0,omega:0,queue:[],pulse:0,distCount:0,distAt:0,recovering:false,rec:null,upright:0,peakI:0,peakF:0,accum:0,ctrlAccum:0,meas:[0,0,0,0],prevMeas:null,history:{t:[],a:[],x:[],f:[],i:[],mode:[]},scheduleIdx:0};paused=false;$('pause').textContent='Pause';$('log').innerHTML='';$('mRec').textContent='—';if(startUpright){note('LQR test: started 2° from upright with the balance controller already active.','good');}else{note('Reset: cart starts centred; pendulum starts '+deg(th).toFixed(1)+'° from hanging.','event');if(!startUpright&&P.kickDur>0)note('Startup excitation: '+P.kickF.toFixed(2)+' N requested for '+P.kickDur.toFixed(2)+' s; actual force remains motor/driver limited.','event');}note('Computed LQR K = ['+K.map(v=>v.toFixed(3)).join(', ')+']');$('status').textContent=startUpright?'Upright-start LQR test. This tests balance, not swing-up.':'Hanging-start run. Swing-up controller is active until the LQR catch region is reached.';}
+function measure(){const z=sim.z,xc=Math.round(z[0]*P.xCounts)/P.xCounts,ac=Math.round(wrapPi(z[2])*P.angleCounts)/P.angleCounts;let xv=0,av=0;if(sim.prevMeas){xv=(xc-sim.prevMeas[0])/P.Ts;av=wrapPi(ac-sim.prevMeas[1])/P.Ts;}sim.prevMeas=[xc,ac];sim.meas=[xc,xv,ac,av];}
+function motorForCommand(Fcmd){const z=sim.z,omega=(z[1]/P.r)*P.G, Ireq=Fcmd*P.r/(P.eta*P.G*P.Kt);let Vcmd=Ireq*P.R+P.Ke*omega;Vcmd=clamp(Vcmd,-P.V,P.V);let I=clamp((Vcmd-P.Ke*omega)/P.R,-P.Imax,P.Imax);let F=P.eta*P.G*P.Kt*I/P.r;
+ const maxRpm=P.rpm; if(Math.abs(omega)*60/(2*Math.PI)>maxRpm){if(Math.sign(F)===Math.sign(z[1]))F=0;}
+ return {F,V:Vcmd,I,omega};}
+function dynamics(z,F,Fe){const [x,v,th,w]=z,s=Math.sin(th),c=Math.cos(th),a=P.M+P.mp,bb=P.h*c,d=P.Ip;const r1=F-P.b*v+P.h*s*w*w+Fe;const r2=-P.c*w-P.g*P.h*s+Fe*P.L*c;const det=a*d-bb*bb;const xdd=(d*r1-bb*r2)/det,thdd=(a*r2-bb*r1)/det;return [v,xdd,w,thdd];}
+function rk4(z,F,Fe){const plus=(a,b,s)=>a.map((v,i)=>v+s*b[i]),k1=dynamics(z,F,Fe),k2=dynamics(plus(z,k1,DT/2),F,Fe),k3=dynamics(plus(z,k2,DT/2),F,Fe),k4=dynamics(plus(z,k3,DT),F,Fe);return z.map((v,i)=>v+DT*(k1[i]+2*k2[i]+2*k3[i]+k4[i])/6);}
+function swingup(z){
+ const [x,v,th,w]=z;
+ // Energy is measured from the hanging equilibrium; upright energy is 2*g*h.
+ const E=0.5*P.Ip*w*w+P.g*P.h*(1-Math.cos(th));
+ const energyError=E-P.Etop;
+ // With this angle convention, dE/dt = -h*cos(th)*w*xdd - c*w^2.
+ // The sign-based energy-shaping command drives E toward Etop.
+ const phase=w*Math.cos(th);
+ const pump=P.kE*energyError*Math.sign(phase);
+ const accel=pump-P.centerX*x-P.centerV*v;
+ // Invert the nonlinear equations used by dynamics() to request cart force.
+ const a=P.M+P.mp, bb=P.h*Math.cos(th), d=P.Ip, det=a*d-bb*bb;
+ const r2=-P.c*w-P.g*P.h*Math.sin(th);
+ return (det*accel+bb*r2)/d+P.b*v-P.h*Math.sin(th)*w*w;
 }
-function softWall(x,xd){
-  let f=0; const over=Math.abs(x)-P.x_soft;
-  if(over>0){const kw=120,dw=25; f=-Math.sign(x)*(kw*over*over)-dw*xd*(over/(P.x_track-P.x_soft));}
-  return f;
+function ctrl(){measure();const [x,v,th,w]=sim.meas,phi=wrapPi(th-Math.PI),z=sim.z;let mode=sim.mode;
+ if(mode===1){if(Math.abs(phi)>32*Math.PI/180||Math.abs(w)>9){sim.mode=0;note('t='+sim.t.toFixed(2)+' s: left LQR balance region → swing-up.','bad');}}
+ else if(Math.abs(phi)<P.catchAngle&&Math.abs(w)<P.catchRate&&Math.abs(x)<Math.max(.05,P.track*.7)){sim.mode=1;note('t='+sim.t.toFixed(2)+' s: LQR catch region entered.','good');}
+ let Fcmd;if(!sim.startUpright&&sim.t<P.kickDur){Fcmd=P.kickF;}else if(sim.mode===1){Fcmd=-(K[0]*x+K[1]*v+K[2]*phi+K[3]*w);}else Fcmd=swingup(z);
+ const xSoft=P.track*.78,over=Math.abs(z[0])-xSoft;if(over>0)Fcmd+=-Math.sign(z[0])*(80*over*over+18*z[1]*over/Math.max(.05,P.track-xSoft));
+ Fcmd=clamp(Fcmd,-P.Fmax,P.Fmax);const maxDelta=P.slew*P.Ts;Fcmd=clamp(Fcmd,sim.cmd-maxDelta,sim.cmd+maxDelta);sim.cmd=Fcmd;const act=motorForCommand(Fcmd);sim.force=act.F;sim.voltage=act.V;sim.current=act.I;sim.omega=act.omega;sim.peakI=Math.max(sim.peakI,Math.abs(act.I));sim.peakF=Math.max(sim.peakF,Math.abs(act.F));
 }
-/* Fe = external horizontal force on the bob (the user's "hindrance") */
-function dynamics(z,u,tau,Fe){
-  const xd=z[1],th=z[2],thd=z[3],c=Math.cos(th),s=Math.sin(th);
-  const a=P.M+P.m,bb=P.m*P.l*c,d=P.m*P.l*P.l;
-  const r1=u-P.b*xd+P.m*P.l*s*thd*thd+Fe;
-  const r2=tau-P.c*thd-P.m*P.g*P.l*s+Fe*P.l*c;
-  const dd=a*d-bb*bb;
-  return [xd,(d*r1-bb*r2)/dd,thd,(a*r2-bb*r1)/dd];
+const DIST_SCHEDULE=[[8,4],[14,-5],[20,3],[26,-6],[32,4]];
+function step(){const s=sim,t=s.t,z=s.z;
+ if($('schedule').checked&&s.scheduleIdx<DIST_SCHEDULE.length&&t>=DIST_SCHEDULE[s.scheduleIdx][0]){const d=DIST_SCHEDULE[s.scheduleIdx++];s.queue.push({type:'cart',imp:d[1]});s.distAt=t;s.recovering=true;s.distCount++;note('t='+t.toFixed(2)+' s: scheduled cart impulse '+d[1]+' N·s','event');}
+ while(s.queue.length){const q=s.queue.shift();if(q.type==='cart'){z[1]+=(q.imp!==undefined?q.imp:q.v)/(P.M+P.mp);}else if(q.type==='kick'){z[3]+=q.v;}else if(q.type==='bob'){s.pulse=q.F;s.pulseLeft=q.dur;}s.distAt=t;s.recovering=true;}
+ if(s.ctrlAccum>=P.Ts-DT/2||s.k===0){ctrl();s.ctrlAccum=0;}s.ctrlAccum+=DT;
+ let Fe=0;if(s.pulseLeft>0){Fe=s.pulse;s.pulseLeft-=DT;}else s.pulse=0;
+ s.z=rk4(z,s.force,Fe);s.z[2]=wrapPi(s.z[2]);if(Math.abs(s.z[0])>P.track){s.z[0]=Math.sign(s.z[0])*P.track;if(Math.sign(s.z[1])===Math.sign(s.z[0]))s.z[1]*=-.15;note('Track end-stop reached.','bad');}
+ const phi=wrapPi(s.z[2]-Math.PI);if(s.mode===1&&Math.abs(phi)<5*Math.PI/180)s.upright+=DT;
+ if(s.recovering&&s.mode===1&&Math.abs(phi)<3*Math.PI/180&&Math.abs(s.z[3])<.3&&t-s.distAt>.25){s.rec=t-s.distAt;s.recovering=false;$('mRec').textContent=s.rec.toFixed(2)+' s';note('Recovered to upright band in '+s.rec.toFixed(2)+' s','good');}
+ s.t+=DT;s.k++;if(s.k%5===0){const h=s.history;h.t.push(s.t);h.a.push(deg(phi));h.x.push(s.z[0]);h.f.push(s.force/Math.max(P.Fmax,.01));h.i.push(s.current/Math.max(P.Imax,.01));h.mode.push(s.mode);while(h.t.length&&s.t-h.t[0]>WINDOW){for(const key in h)h[key].shift();}}
 }
-function rk4(z,u,tau,Fe){
-  const add=(a,b,s)=>a.map((v,i)=>v+s*b[i]);
-  const k1=dynamics(z,u,tau,Fe),k2=dynamics(add(z,k1,DT/2),u,tau,Fe),
-        k3=dynamics(add(z,k2,DT/2),u,tau,Fe),k4=dynamics(add(z,k3,DT),u,tau,Fe);
-  return z.map((v,i)=>v+DT/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]));
-}
-function bumper(z){
-  if(Math.abs(z[0])>P.x_track){z[0]=Math.sign(z[0])*P.x_track; if(Math.sign(z[1])===Math.sign(z[0]))z[1]=-0.15*z[1];}
-  return z;
-}
-
-/* =====================================================================
-   SIMULATION STATE
-   ===================================================================== */
-const PULSE_LEN=0.1;           // s, duration of a bob force pulse
-let sim;
-function resetSim(){
-  sim={z:[0,0,0.02,0],k:0,mode:0,dIdx:0,queue:[],pulse:{F:0,rem:0},
-       u:0,tau:0,flash:null,recovering:false,tDist:0,rec:null,count:0,upright:0,
-       hist:{t:[],err:[],x:[],u:[],tau:[],mode:[]},accum:0};
-  document.getElementById('log').innerHTML='';
-  log('Simulation started at the bottom (θ = 1.1°). Swinging up…','s');
-  document.getElementById('sRec').textContent='–';
-  document.getElementById('sCnt').textContent='0';
-}
-function log(msg,cls=''){
-  const el=document.getElementById('log');
-  const d=document.createElement('div'); if(cls)d.className=cls; d.textContent=msg;
-  el.appendChild(d); while(el.children.length>60)el.removeChild(el.firstChild); el.scrollTop=el.scrollHeight;
-}
-const tNow=()=>sim.k*DT;
-
-function step(){
-  const s=sim,t=tNow(); let z=s.z;
-
-  /* scripted MATLAB disturbances (optional) */
-  if(scriptOn.checked && s.dIdx<DIST.length && t>=DIST[s.dIdx][0]){
-    const d=DIST[s.dIdx]; s.queue.push({type:'raw',dth:d[1],dv:d[2]/(P.M+P.m)}); s.dIdx++;
-    log(`t=${t.toFixed(2)}s  scripted: Δθ̇=${d[1]>=0?'+':''}${d[1]} rad/s, cart impulse ${d[2]} N·s`,'d');
-    s.count++; s.recovering=true; s.tDist=t;
-  } else if(!scriptOn.checked){ while(s.dIdx<DIST.length && DIST[s.dIdx][0]<=t) s.dIdx++; }
-
-  /* user disturbances */
-  while(s.queue.length){
-    const q=s.queue.shift();
-    if(q.type==='raw'){z[3]+=q.dth; z[1]+=q.dv;}
-    else if(q.type==='kick'){z[3]+=q.dth;}
-    else if(q.type==='cart'){z[1]+=q.imp/(P.M+P.m);}
-    else if(q.type==='bob'){s.pulse={F:q.F,rem:PULSE_LEN};}
-  }
-  const Fe=s.pulse.rem>0?s.pulse.F:0; if(s.pulse.rem>0)s.pulse.rem-=DT;
-
-  const phi=wrapPi(z[2]-Math.PI);
-
-  /* mode logic with hysteresis */
-  if(s.mode===1){
-    if(Math.abs(phi)>H.drop_phi||Math.abs(z[3])>H.drop_rate){
-      s.mode=0; log(`t=${t.toFixed(2)}s  knocked out of balance zone (${deg(Math.abs(phi)).toFixed(1)}° off top) → SWING-UP`,'s');}
-  } else if(Math.abs(phi)<H.catch_phi&&Math.abs(z[3])<H.catch_rate&&Math.abs(z[0])<H.catch_x){
-    s.mode=1; log(`t=${t.toFixed(2)}s  CAUGHT → LQR balancing`,'c');
-  }
-
-  /* control */
-  let u,tau;
-  if(s.mode===1){
-    const e=[z[0],z[1],phi,z[3]];
-    u=-(K[0][0]*e[0]+K[0][1]*e[1]+K[0][2]*e[2]+K[0][3]*e[3]);
-    tau=-(K[1][0]*e[0]+K[1][1]*e[1]+K[1][2]*e[2]+K[1][3]*e[3]);
-  } else [u,tau]=swingupLaw(z);
-  u+=softWall(z[0],z[1]);
-  u=clamp(u,P.u_max); tau=clamp(tau,P.tau_max);
-  s.u=u; s.tau=tau;
-
-  /* recovery timing */
-  if(s.recovering && s.mode===1 && t-s.tDist>0.3 && Math.abs(phi)<3*Math.PI/180 && Math.abs(z[3])<0.3){
-    s.rec=t-s.tDist; s.recovering=false;
-    document.getElementById('sRec').textContent=s.rec.toFixed(1)+' s';
-    log(`t=${t.toFixed(2)}s  RECOVERED upright in ${s.rec.toFixed(1)} s`,'c');
-  }
-  if(s.mode===1 && Math.abs(phi)<5*Math.PI/180) s.upright+=DT;
-
-  /* history every 0.01 s */
-  if(s.k%5===0){
-    const h=s.hist; h.t.push(t);h.err.push(deg(phi));h.x.push(z[0]);h.u.push(u/P.u_max);h.tau.push(tau/P.tau_max);h.mode.push(s.mode);
-    while(h.t.length&&t-h.t[0]>WINDOW){for(const key in h)h[key].shift();}
-  }
-
-  /* integrate */
-  s.z=bumper(rk4(z,u,tau,Fe)); s.k++;
-}
-
-/* ---------- user disturbance entry ---------- */
-const kindSel=document.getElementById('kind'),magIn=document.getElementById('mag'),
-      dirL=document.getElementById('dirL'),dirR=document.getElementById('dirR');
-let dir=+1;  // +1 right, -1 left
-function setDir(d){dir=d;dirR.classList.toggle('on',d>0);dirL.classList.toggle('on',d<0);
-  dirR.setAttribute('aria-pressed',d>0);dirL.setAttribute('aria-pressed',d<0);}
-dirL.onclick=()=>setDir(-1); dirR.onclick=()=>setDir(1);
-const UNITS={
-  bob:{label:'Force (N), applied for 0.1 s',def:4,unit:'N'},
-  kick:{label:'Angular kick (rad/s)',def:2.5,unit:'rad/s'},
-  cart:{label:'Cart impulse (N·s)',def:2,unit:'N·s'}};
-kindSel.onchange=()=>{const u=UNITS[kindSel.value];document.getElementById('magLabel').textContent=u.label;magIn.value=u.def;};
-
-function applyDisturbance(d){
-  if(d!==undefined)setDir(d);
-  let mag=parseFloat(magIn.value);
-  if(!isFinite(mag)||mag<=0){magIn.focus();log('Enter a magnitude greater than 0.','s');return;}
-  mag=Math.min(mag,60);
-  const kind=kindSel.value,t=tNow(),side=dir>0?'RIGHT':'LEFT';
-  if(kind==='bob'){
-    /* right = +x on screen. A bob pushed right has +Fe. */
-    sim.queue.push({type:'bob',F:dir*mag});
-  } else if(kind==='kick'){
-    /* +theta_dot swings the bob to the right when hanging down and to the
-       left when upright; flip the sign near the top so "right" always looks right */
-    const upNow=Math.cos(sim.z[2])<0;
-    sim.queue.push({type:'kick',dth:(upNow?-1:1)*dir*mag});
-  } else {
-    sim.queue.push({type:'cart',imp:dir*mag});
-  }
-  sim.flash={kind,dir,mag,t0:t};
-  sim.count++; sim.recovering=true; sim.tDist=t;
-  document.getElementById('sCnt').textContent=sim.count;
-  log(`t=${t.toFixed(2)}s  DISTURBANCE ${side}: ${mag} ${UNITS[kind].unit} on ${kind==='bob'?'pendulum':kind==='kick'?'pivot':'cart'}`,'d');
-}
-document.getElementById('apply').onclick=()=>applyDisturbance();
-document.addEventListener('keydown',e=>{
-  const typing=e.target.tagName==='INPUT'&&e.target.type==='number'||e.target.tagName==='SELECT';
-  if(e.key==='ArrowLeft'&&!typing){e.preventDefault();applyDisturbance(-1);}
-  else if(e.key==='ArrowRight'&&!typing){e.preventDefault();applyDisturbance(1);}
-  else if(e.code==='Space'&&!typing&&e.target.tagName!=='BUTTON'){e.preventDefault();togglePause();}
-  else if((e.key==='r'||e.key==='R')&&!typing){resetSim();}
-});
-magIn.addEventListener('keydown',e=>{if(e.key==='Enter')applyDisturbance();});
-
-const scriptOn=document.getElementById('script');
-let paused=false;
-function togglePause(){paused=!paused;document.getElementById('pause').textContent=paused?'Resume':'Pause';}
-document.getElementById('pause').onclick=togglePause;
-document.getElementById('restart').onclick=()=>resetSim();
-scriptOn.onchange=()=>{ if(scriptOn.checked){ sim.dIdx=0; while(sim.dIdx<DIST.length&&DIST[sim.dIdx][0]<=tNow())sim.dIdx++; } };
-
-/* =====================================================================
-   RENDERING
-   ===================================================================== */
-const WINDOW=20; // s of history in the charts
-const cv=document.getElementById('sim'),ctx=cv.getContext('2d');
-const WORLD_W=4.0, WORLD_H=2*P.l+0.30;
-function fitCanvas(c,w,h){const r=devicePixelRatio||1;c.width=Math.round(w*r);c.height=Math.round(h*r);return r;}
-let dpr=1,CW=0,CH=0;
-function resize(){
-  CW=cv.parentElement.clientWidth; CH=CW*WORLD_H/WORLD_W;
-  dpr=fitCanvas(cv,CW,CH); cv.style.height=CH+'px';
-  for(const id of ['c1','c2','c3']){const c=document.getElementById(id);fitCanvas(c,c.clientWidth,170);}
-}
-addEventListener('resize',resize);
-
-function arrow(c,x1,y1,x2,y2,color,w){
-  const a=Math.atan2(y2-y1,x2-x1),hl=Math.max(9,w*3);
-  c.strokeStyle=color;c.fillStyle=color;c.lineWidth=w;c.lineCap='round';
-  c.beginPath();c.moveTo(x1,y1);c.lineTo(x2-Math.cos(a)*hl*0.6,y2-Math.sin(a)*hl*0.6);c.stroke();
-  c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-hl*Math.cos(a-0.45),y2-hl*Math.sin(a-0.45));
-  c.lineTo(x2-hl*Math.cos(a+0.45),y2-hl*Math.sin(a+0.45));c.closePath();c.fill();
-}
-
-function drawScene(){
-  const c=ctx; c.setTransform(dpr,0,0,dpr,0,0);
-  const s=CW/WORLD_W, X=x=>CW/2+x*s, Y=y=>CH/2-y*s;
-  c.fillStyle='#080d14';c.fillRect(0,0,CW,CH);
-
-  /* grid */
-  c.strokeStyle='#131e2c';c.lineWidth=1;c.beginPath();
-  for(let gx=-2;gx<=2;gx+=0.25){c.moveTo(X(gx),0);c.lineTo(X(gx),CH);}
-  for(let gy=-0.75;gy<=0.75;gy+=0.25){c.moveTo(0,Y(gy));c.lineTo(CW,Y(gy));}
-  c.stroke();
-
-  /* soft-wall zones, track limit, rail, top line */
-  c.fillStyle='rgba(255,92,92,0.06)';
-  c.fillRect(X(P.x_soft),0,X(P.x_track)-X(P.x_soft),CH);
-  c.fillRect(X(-P.x_track),0,X(P.x_track)-X(P.x_soft),CH);
-  c.setLineDash([5,5]);c.strokeStyle='#ff5c5c';c.lineWidth=1.5;
-  for(const xs of [-P.x_track,P.x_track]){c.beginPath();c.moveTo(X(xs),Y(0.3));c.lineTo(X(xs),Y(-0.15));c.stroke();}
-  c.strokeStyle='#3ddc97';c.lineWidth=1;c.beginPath();c.moveTo(0,Y(P.l));c.lineTo(CW,Y(P.l));c.stroke();
-  c.setLineDash([]);
-  c.strokeStyle='#dfe8f2';c.lineWidth=2;c.beginPath();c.moveTo(X(-2),Y(-0.065));c.lineTo(X(2),Y(-0.065));c.stroke();
-
-  c.font=`${Math.max(10,CW/85)}px ui-monospace,Consolas,monospace`;c.fillStyle='#6f8399';
-  c.fillText('upright  θ = 180°',X(-1.97),Y(P.l)-6);
-  c.fillText('natural  θ = 0°',X(-1.97),Y(-P.l)+16);
-  c.fillText('track limit',X(P.x_track)-c.measureText('track limit').width-6,Y(0.3)+12);
-
-  const z=sim.z,x=z[0],th=z[2];
-  const bx=x+P.l*Math.sin(th),by=-P.l*Math.cos(th);
-
-  /* cart */
-  const w=0.28,h=0.13;
-  c.fillStyle='#5cc8ff';c.strokeStyle='#e8f6ff';c.lineWidth=1.5;
-  c.beginPath();c.rect(X(x-w/2),Y(h/2),w*s,h*s);c.fill();c.stroke();
-  c.fillStyle='#0b2233';
-  for(const dx of[-0.08,0.08]){c.beginPath();c.arc(X(x+dx),Y(-h/2),0.022*s,0,7);c.fill();}
-
-  /* rod, pivot, bob */
-  c.strokeStyle='#cfd9e4';c.lineWidth=Math.max(3,s*0.014);c.lineCap='round';
-  c.beginPath();c.moveTo(X(x),Y(0));c.lineTo(X(bx),Y(by));c.stroke();
-  c.fillStyle='#0b2233';c.beginPath();c.arc(X(x),Y(0),0.02*s,0,7);c.fill();
-  c.fillStyle='#ff6b57';c.strokeStyle='#ffd0c9';c.lineWidth=2;
-  c.beginPath();c.arc(X(bx),Y(by),0.05*s,0,7);c.fill();c.stroke();
-
-  /* disturbance arrow (fades out) */
-  const f=sim.flash;
-  if(f){
-    const age=tNow()-f.t0,life=0.9;
-    if(age<life){
-      c.globalAlpha=1-age/life;
-      const len=Math.min(0.9,0.22+f.mag*(f.kind==='bob'?0.05:f.kind==='kick'?0.14:0.18))*s*f.dir;
-      if(f.kind==='cart'){arrow(c,X(x)-len*0.0,Y(0.19),X(x)+len,Y(0.19),'#ffb340',5);}
-      else if(f.kind==='bob'){arrow(c,X(bx)-len,Y(by),X(bx),Y(by),'#ffb340',5);}
-      else{arrow(c,X(x),Y(0.2),X(x)+len*0.8,Y(0.2),'#ffb340',5);
-        c.fillStyle='#ffb340';c.fillText('kick',X(x)+ (f.dir>0?4:-30),Y(0.2)-8);}
-      c.globalAlpha=1;
-    }
-  }
-
-  /* HUD + badge */
-  const phi=wrapPi(th-Math.PI);
-  document.getElementById('hud').innerHTML=
-    `time     <b>${tNow().toFixed(2).padStart(6)} s</b>\n`+
-    `angle    <b>${deg(wrapPi(th)).toFixed(1).padStart(7)}°</b>\n`+
-    `top err  <b>${deg(phi).toFixed(2).padStart(7)}°</b>\n`+
-    `cart x   <b>${x.toFixed(3).padStart(7)} m</b>\n`+
-    `cart v   <b>${z[1].toFixed(3).padStart(7)} m/s</b>\n`+
-    `force    <b>${sim.u.toFixed(2).padStart(7)} N</b>\n`+
-    `torque   <b>${sim.tau.toFixed(3).padStart(7)} N·m</b>`;
-  const bd=document.getElementById('badge');
-  bd.textContent=sim.mode?'LQR: balancing at the top':'SWING-UP (energy pumping)';
-  bd.className='badge '+(sim.mode?'lqr':'swing');
-  document.getElementById('sErr').textContent=deg(Math.abs(phi)).toFixed(1)+'°';
-  document.getElementById('sUp').textContent=sim.upright.toFixed(1)+' s';
-}
-
-function drawChart(id,series,opt){
-  const c=document.getElementById(id),g=c.getContext('2d'),W=c.clientWidth,Hh=170;
-  g.setTransform(devicePixelRatio||1,0,0,devicePixelRatio||1,0,0);
-  g.clearRect(0,0,W,Hh);g.fillStyle='#0a121c';g.fillRect(0,0,W,Hh);
-  const L=38,R=8,T=8,Bt=20,pw=W-L-R,ph=Hh-T-Bt,h=sim.hist;
-  const tEnd=Math.max(WINDOW,tNow()),tStart=tEnd-WINDOW;
-  const yy=v=>T+ph*(1-(v-opt.min)/(opt.max-opt.min)),xx=t=>L+pw*(t-tStart)/WINDOW;
-  g.font='10px ui-monospace,Consolas,monospace';g.fillStyle='#6f8399';g.strokeStyle='#1c2a3b';g.lineWidth=1;
-  for(const v of opt.ticks){g.beginPath();g.moveTo(L,yy(v));g.lineTo(W-R,yy(v));g.stroke();g.fillText(String(v),3,yy(v)+3);}
-  for(let i=0;i<=4;i++){const t=tStart+i*WINDOW/4;g.fillText(t.toFixed(0)+'s',xx(t)-8,Hh-5);}
-  if(opt.shade){g.fillStyle='rgba(255,179,64,0.10)';let s0=null;
-    for(let i=0;i<h.t.length;i++){if(h.mode[i]&&s0===null)s0=h.t[i];if((!h.mode[i]||i===h.t.length-1)&&s0!==null){g.fillRect(xx(s0),T,xx(h.t[i])-xx(s0),ph);s0=null;}}}
-  if(opt.lines)for(const [v,col] of opt.lines){g.strokeStyle=col;g.setLineDash([4,4]);g.beginPath();g.moveTo(L,yy(v));g.lineTo(W-R,yy(v));g.stroke();g.setLineDash([]);}
-  for(const [arr,col] of series){
-    g.strokeStyle=col;g.lineWidth=1.6;g.beginPath();
-    for(let i=0;i<h.t.length;i++){const v=Math.max(opt.min,Math.min(opt.max,arr[i]));const px=xx(h.t[i]),py=yy(v);i?g.lineTo(px,py):g.moveTo(px,py);}
-    g.stroke();
-  }
-  /* disturbance markers */
-  g.strokeStyle='rgba(255,179,64,.55)';
-}
-function drawCharts(){
-  const h=sim.hist;
-  drawChart('c1',[[h.err,'#ff6b57']],{min:-190,max:190,ticks:[-180,-90,0,90,180],shade:true,lines:[[0,'#3ddc97']]});
-  drawChart('c2',[[h.x,'#5cc8ff']],{min:-1.7,max:1.7,ticks:[-1.5,-0.75,0,0.75,1.5],lines:[[1.5,'#ff5c5c'],[-1.5,'#ff5c5c']]});
-  drawChart('c3',[[h.u,'#5cc8ff'],[h.tau,'#c792ea']],{min:-1.1,max:1.1,ticks:[-1,-0.5,0,0.5,1]});
-}
-
-/* =====================================================================
-   MAIN LOOP — wall-clock paced, exactly like the MATLAB pause() throttle
-   ===================================================================== */
-let last=performance.now(),frame=0;
-function loop(now){
-  const dtw=Math.min(0.05,(now-last)/1000);last=now;
-  if(!paused){
-    sim.accum+=dtw*parseFloat(document.getElementById('speed').value);
-    let guard=0;
-    while(sim.accum>=DT&&guard++<4000){step();sim.accum-=DT;}
-  }
-  drawScene();
-  if((frame++&1)===0)drawCharts();
-  requestAnimationFrame(loop);
-}
-resetSim();resize();
-log('LQR gain K row 1 (cart force): ['+K[0].map(v=>v.toFixed(2)).join(', ')+']');
-log('LQR gain K row 2 (pivot torque): ['+K[1].map(v=>v.toFixed(2)).join(', ')+']');
-requestAnimationFrame(loop);
-</script>
-</body>
-</html>
+function applyDist(dir){const mag=num('distMag'),type=$('distType').value;if(!Number.isFinite(mag)||mag<=0){$('status').textContent='Enter a disturbance magnitude greater than zero.';return;}if(type==='bob')sim.queue.push({type:'bob',F:dir*mag,dur:clamp(num('distDur'),.01,2)});else if(type==='cart')sim.queue.push({type:'cart',v:dir*mag/(P.M+P.mp)});else sim.queue.push({type:'kick',v:dir*mag});sim.distCount++;$('status').textContent='Disturbance queued: '+type+', magnitude '+mag;note('t='+sim.t.toFixed(2)+' s: '+type+' disturbance, '+(dir>0?'right':'left')+', '+mag,'event');}
+$('left').onclick=()=>applyDist(-1);$('right').onclick=()=>applyDist(1);$('startUpright').onclick=()=>resetSim(true);$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'Resume':'Pause';};$('reset').onclick=()=>resetSim();$('applyDesign').onclick=()=>{try{readDesign();calcLQR();resetSim();note('Motor force ceiling at zero speed: ±'+P.Fmax.toFixed(2)+' N.');note('Encoder resolutions: '+P.xCounts.toFixed(0)+' counts/m; '+P.angleCounts.toFixed(1)+' counts/rad.');note('Bob weight: '+(P.mb*P.g).toFixed(2)+' N; pendulum inertia about pivot: '+P.Ip.toFixed(5)+' kg·m²; motor back-EMF estimate: '+P.Ke.toFixed(5)+' V·s/rad.');}catch(e){$('status').textContent='Model error: '+e.message;note('ERROR: '+e.message,'bad');}};
+function resize(){const cv=$('sim');CW=cv.parentElement.clientWidth;CH=CW*.48;dpr=window.devicePixelRatio||1;cv.width=CW*dpr;cv.height=CH*dpr;cv.style.height=CH+'px';for(const id of ['c1','c2','c3']){let c=$(id);c.width=Math.max(1,c.clientWidth)*dpr;c.height=170*dpr;}}
+function draw(){const c=$('sim').getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,CW,CH);c.fillStyle='#080d13';c.fillRect(0,0,CW,CH);const world=Math.max(P.track*2+0.6,3.4),scale=CW/world,X=x=>CW/2+x*scale,Y=y=>CH*.60-y*scale;
+ c.strokeStyle='#142130';c.lineWidth=1;for(let x=-world/2;x<=world/2;x+=.25){c.beginPath();c.moveTo(X(x),0);c.lineTo(X(x),CH);c.stroke();}c.strokeStyle='#34475d';c.lineWidth=3;c.beginPath();c.moveTo(X(-P.track),Y(-.08));c.lineTo(X(P.track),Y(-.08));c.stroke();c.strokeStyle='#ff6d5e';c.setLineDash([5,5]);for(const x of [-P.track,P.track]){c.beginPath();c.moveTo(X(x),Y(.18));c.lineTo(X(x),Y(-.17));c.stroke();}c.setLineDash([]);
+ const [x,v,th,w]=sim.z,bx=x+P.L*Math.sin(th),by=-P.L*Math.cos(th),cw=.28,ch=.13;const cartW=P.cartW,cartH=P.cartH;c.fillStyle='#60d3ff';c.strokeStyle='#d8f4ff';c.lineWidth=1.5;c.fillRect(X(x-cartW/2),Y(cartH/2),cartW*scale,cartH*scale);c.strokeRect(X(x-cartW/2),Y(cartH/2),cartW*scale,cartH*scale);c.strokeStyle='#cdd9e5';c.lineWidth=Math.max(3,scale*.012);c.beginPath();c.moveTo(X(x),Y(0));c.lineTo(X(bx),Y(by));c.stroke();c.fillStyle='#ff9e42';c.beginPath();c.arc(X(bx),Y(by),Math.max(7,P.bobD*scale/2),0,Math.PI*2);c.fill();c.fillStyle='#d6e1ed';c.beginPath();c.arc(X(x),Y(0),5,0,Math.PI*2);c.fill();c.fillStyle='#7d92a8';c.font='12px ui-monospace,Consolas';c.fillText('−'+P.track.toFixed(2)+' m',X(-P.track)+4,Y(-.18));c.fillText('+'+P.track.toFixed(2)+' m',X(P.track)-52,Y(-.18));
+ const phi=wrapPi(th-Math.PI);$('badge').textContent=sim.mode?'LQR BALANCE':'SWING-UP / RELEASE';$('badge').style.color=sim.mode?'var(--green)':'var(--orange)';$('hud').textContent=`t       ${sim.t.toFixed(2)} s\nangle   ${deg(th).toFixed(1)}° from down\nerror   ${deg(phi).toFixed(2)}° from up\nx       ${x.toFixed(3)} m\nv       ${v.toFixed(3)} m/s\nforce   ${sim.force.toFixed(2)} N\nvoltage ${sim.voltage.toFixed(2)} V\ncurrent ${sim.current.toFixed(2)} A`;
+ $('mErr').textContent=Math.abs(deg(phi)).toFixed(2)+'°';$('mX').textContent=x.toFixed(3)+' m';$('mI').textContent=sim.peakI.toFixed(2)+' A';$('mF').textContent=sim.peakF.toFixed(2)+' N';$('mUp').textContent=sim.upright.toFixed(2)+' s';}
+function chart(id,series,min,max,ticks,lines=[]){const c=$(id),g=c.getContext('2d'),W=c.clientWidth,H=170;g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);g.fillStyle='#08111b';g.fillRect(0,0,W,H);const L=35,R=8,T=8,B=20,pw=W-L-R,ph=H-T-B,h=sim.history,tEnd=Math.max(WINDOW,sim.t),tStart=tEnd-WINDOW,xx=t=>L+pw*(t-tStart)/WINDOW,yy=v=>T+ph*(1-(v-min)/(max-min));g.font='10px ui-monospace,Consolas';g.fillStyle='#8094aa';g.strokeStyle='#1c2b3c';for(const v of ticks){g.beginPath();g.moveTo(L,yy(v));g.lineTo(W-R,yy(v));g.stroke();g.fillText(String(v),2,yy(v)+3);}for(const [v,col] of lines){g.strokeStyle=col;g.setLineDash([4,4]);g.beginPath();g.moveTo(L,yy(v));g.lineTo(W-R,yy(v));g.stroke();g.setLineDash([]);}for(const [arr,color] of series){g.strokeStyle=color;g.lineWidth=1.7;g.beginPath();for(let i=0;i<h.t.length;i++){const px=xx(h.t[i]),py=yy(clamp(arr[i],min,max));if(i===0)g.moveTo(px,py);else g.lineTo(px,py);}g.stroke();}for(let i=0;i<=4;i++)g.fillText((tStart+i*WINDOW/4).toFixed(0)+'s',xx(tStart+i*WINDOW/4)-8,H-5);}
+function charts(){chart('c1',[[sim.history.a,'#ff6d5e']],-180,180,[-180,-90,0,90,180],[[0,'#5ee0a0']]);chart('c2',[[sim.history.x,'#60d3ff']],-P.track*1.15,P.track*1.15,[-P.track,0,P.track],[[-P.track,'#ff6d5e'],[P.track,'#ff6d5e']]);chart('c3',[[sim.history.f,'#ff9e42'],[sim.history.i,'#c4a0ff']],-1.1,1.1,[-1,-.5,0,.5,1],[[0,'#53677d']]);}
+function loop(now){const elapsed=Math.min(.05,(now-last)/1000);last=now;if(!paused){sim.accum+=elapsed*num('speed');let n=0;while(sim.accum>=DT&&n++<4000){if(sim.ctrlAccum+DT>=P.Ts-1e-9)sim.ctrlAccum=P.Ts;step();sim.accum-=DT;}}draw();if((frame++%2)===0)charts();requestAnimationFrame(loop);}
+window.addEventListener('resize',resize);document.addEventListener('keydown',e=>{const tag=e.target.tagName;if(tag==='INPUT'||tag==='SELECT')return;if(e.key==='ArrowLeft'){e.preventDefault();applyDist(-1);}if(e.key==='ArrowRight'){e.preventDefault();applyDist(1);}if(e.code==='Space'){e.preventDefault();$('pause').click();}if(e.key.toLowerCase()==='r')resetSim();});
+readDesign();calcLQR();resetSim();resize();requestAnimationFrame(loop);
+</script></body></html>
