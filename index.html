@@ -1,172 +1,347 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Linear Cart–Pole | Engineering Design Simulator</title>
-<style>
-:root{--bg:#0a1018;--panel:#121d2a;--panel2:#18283a;--line:#2b3d52;--text:#e7eef7;--muted:#9aadc1;--cyan:#60d3ff;--orange:#ff9e42;--red:#ff6d5e;--green:#5ee0a0;--purple:#c4a0ff}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}header{padding:20px 24px 10px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}h1{font-size:22px;margin:0}header p{color:var(--muted);margin:5px 0 0}.pill{font-size:11px;color:var(--green);border:1px solid #28684e;padding:5px 9px;border-radius:99px}main{max-width:1600px;margin:auto;padding:12px 20px 28px;display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}.stage{position:relative;padding:0;overflow:hidden}.stage canvas{display:block;width:100%;height:auto;background:#080d13}.hud{position:absolute;right:12px;top:12px;background:#080d13dd;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:12px/1.6 ui-monospace,Consolas,monospace;white-space:pre;color:var(--muted)}.badge{position:absolute;top:12px;left:12px;background:#080d13dd;border:1px solid var(--line);padding:7px 10px;border-radius:7px;font-weight:700;color:var(--orange)}.side{display:flex;flex-direction:column;gap:12px}.card h2{font-size:14px;margin:0 0 12px}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px}.section-title small{font-weight:400;color:var(--muted)}.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;font-size:11px;color:var(--muted);margin:0 0 5px}.field input,.field select{width:100%;min-width:0;background:#08111b;border:1px solid var(--line);color:var(--text);border-radius:7px;padding:9px 8px;font-size:13px}.field input:focus,.field select:focus,button:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}.unit{font-size:10px;color:#758ba1;margin-top:3px}.full{grid-column:1/-1}details{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}details summary{cursor:pointer;font-weight:650;font-size:13px;margin-bottom:12px}button{cursor:pointer;border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--text);padding:9px 11px;font-weight:600}.btnrow{display:flex;gap:8px;flex-wrap:wrap}.btnrow button{flex:1}.primary{background:var(--orange);color:#241303;border-color:var(--orange)}.danger{color:var(--red)}.hint{font-size:11px;color:var(--muted);line-height:1.5;margin:10px 0 0}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:#08111b;border:1px solid var(--line);border-radius:8px;padding:9px}.stat span{display:block;color:var(--muted);font-size:10px}.stat b{font:600 17px ui-monospace,Consolas,monospace}.status{font-size:12px;color:var(--muted);margin-top:10px;min-height:18px}.plots{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.plots canvas{width:100%;height:170px;display:block}.legend{font-size:11px;color:var(--muted);margin-top:4px}.warning{border-left:3px solid var(--orange);padding:8px 10px;background:#2a2117;color:#f4d5ac;font-size:11px;line-height:1.5;border-radius:4px}.log{height:120px;overflow:auto;background:#08111b;border:1px solid var(--line);border-radius:7px;padding:8px;font:11px/1.5 ui-monospace,Consolas,monospace;color:var(--muted)}.log div{margin-bottom:3px}.log .good{color:var(--green)}.log .event{color:var(--orange)}.log .bad{color:var(--red)}.inlinecheck{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;margin-top:10px}.inlinecheck input{accent-color:var(--orange)}@media(max-width:1050px){main{grid-template-columns:1fr}.plots{grid-template-columns:1fr}.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){header{padding:16px}main{padding:8px;grid-template-columns:1fr}.side{display:flex}.fields{gap:8px}.hud{font-size:10px;padding:6px}.badge{font-size:11px}}
-</style></head>
-<body>
-<header><div><h1>Linear Cart–Pole · Engineering Design Simulator</h1><p>Configurable mechanics · DC motor drive · encoder feedback · LQR and energy swing-up</p></div><span class="pill">MODEL-BASED STUDY · NOT HARDWARE VALIDATION</span></header>
-<main>
-<section class="card stage"><canvas id="sim"></canvas><div class="badge" id="badge">SWING-UP / RELEASE</div><div class="hud" id="hud"></div></section>
-<aside class="side">
-<section class="card"><div class="section-title"><h2>Mechanical design</h2><small>SI units</small></div><div class="fields">
-<div class="field"><label for="cartMass">Cart mass</label><input id="cartMass" type="number" min="0.05" max="20" step="0.05" value="0.50"><div class="unit">kg · excluding pendulum</div></div>
-<div class="field"><label for="cartWidth">Cart width</label><input id="cartWidth" type="number" min="0.05" max="1" step="0.01" value="0.28"><div class="unit">m · along the rail</div></div>
-<div class="field"><label for="cartHeight">Cart body height</label><input id="cartHeight" type="number" min="0.03" max="0.5" step="0.01" value="0.13"><div class="unit">m · body only</div></div>
-<div class="field"><label for="wheelDia">Cart wheel diameter</label><input id="wheelDia" type="number" min="0.01" max="0.2" step="0.005" value="0.044"><div class="unit">m · visual dimension</div></div>
-<div class="field"><label for="rodMass">Pendulum rod mass</label><input id="rodMass" type="number" min="0" max="10" step="0.01" value="0.08"><div class="unit">kg · uniform rod approximation</div></div>
-<div class="field"><label for="length">Pivot to bob centre</label><input id="length" type="number" min="0.05" max="2" step="0.01" value="0.60"><div class="unit">m · effective pendulum length</div></div>
-<div class="field"><label for="rodDia">Rod diameter</label><input id="rodDia" type="number" min="0.002" max="0.1" step="0.001" value="0.008"><div class="unit">m · display / rod mass is entered</div></div>
-<div class="field"><label for="bobMass">Bob mass</label><input id="bobMass" type="number" min="0.01" max="10" step="0.01" value="0.25"><div class="unit">kg</div></div>
-<div class="field"><label for="bobDia">Bob diameter</label><input id="bobDia" type="number" min="0.01" max="0.3" step="0.005" value="0.06"><div class="unit">m · solid sphere inertia</div></div>
-<div class="field"><label for="track">Usable track half-length</label><input id="track" type="number" min="0.2" max="5" step="0.05" value="1.50"><div class="unit">m · from centre to end stop</div></div>
-<div class="field"><label for="gravity">Gravity</label><input id="gravity" type="number" min="1" max="20" step="0.01" value="9.81"><div class="unit">m/s²</div></div>
-<div class="field"><label for="cartFriction">Cart viscous friction b</label><input id="cartFriction" type="number" min="0" max="10" step="0.01" value="0.10"><div class="unit">N·s/m</div></div>
-<div class="field"><label for="pivotFriction">Pivot viscous friction c</label><input id="pivotFriction" type="number" min="0" max="2" step="0.001" value="0.004"><div class="unit">N·m·s/rad</div></div>
-</div>
-<details open><summary>Motor, transmission & drive limits</summary><div class="fields">
-<div class="field"><label for="voltage">Supply / max motor voltage</label><input id="voltage" type="number" min="1" max="60" step="0.5" value="12"><div class="unit">V · bidirectional drive assumed</div></div>
-<div class="field"><label for="resistance">Armature resistance</label><input id="resistance" type="number" min="0.05" max="100" step="0.1" value="2.4"><div class="unit">Ω</div></div>
-<div class="field"><label for="kt">Torque constant Kt</label><input id="kt" type="number" min="0.001" max="5" step="0.001" value="0.025"><div class="unit">N·m/A</div></div>
-<div class="field"><label for="noLoad">No-load speed at rated voltage</label><input id="noLoad" type="number" min="100" max="30000" step="100" value="15000"><div class="unit">rpm · used to estimate back-EMF constant; illustrative until a motor is selected</div></div>
-<div class="field"><label for="gear">Gear ratio</label><input id="gear" type="number" min="1" max="500" step="1" value="20"><div class="unit">motor rev : pulley rev</div></div>
-<div class="field"><label for="efficiency">Gearbox efficiency</label><input id="efficiency" type="number" min="0.1" max="1" step="0.01" value="0.75"><div class="unit">0–1</div></div>
-<div class="field"><label for="pulley">Drive pulley radius</label><input id="pulley" type="number" min="0.003" max="0.2" step="0.001" value="0.020"><div class="unit">m · pinion/sprocket equivalent</div></div>
-<div class="field"><label for="currentLimit">Current limit</label><input id="currentLimit" type="number" min="0.1" max="100" step="0.1" value="5"><div class="unit">A · motor/driver limit</div></div>
-<div class="field"><label for="forceSlew">Force slew limit</label><input id="forceSlew" type="number" min="0.1" max="10000" step="10" value="1000"><div class="unit">N/s · 10000 approximates no slew limit</div></div>
-<div class="field"><label for="motorCpr">Motor encoder resolution</label><input id="motorCpr" type="number" min="1" max="100000" step="1" value="600"><div class="unit">counts/motor revolution (quadrature counts)</div></div>
-<div class="field"><label for="angleCpr">Pendulum encoder resolution</label><input id="angleCpr" type="number" min="1" max="100000" step="1" value="2048"><div class="unit">counts/pivot revolution</div></div>
-<div class="field"><label for="driverCurrent">Driver current limit</label><input id="driverCurrent" type="number" min="0.1" max="100" step="0.1" value="5"><div class="unit">A · effective limit is the lower current limit</div></div>
-</div><p class="hint">DC motor approximation: back-EMF from no-load speed, current from (V − Ke·ω)/R, torque from Kt·I, then gear ratio, efficiency and pulley radius. Confirm motor datasheet values before using this for hardware selection.</p></details>
-<details open><summary>Controller & sensor settings</summary><div class="fields">
-<div class="field"><label for="sample">Control sample time</label><input id="sample" type="number" min="0.002" max="0.1" step="0.001" value="0.010"><div class="unit">s · controller update period</div></div>
-<div class="field"><label for="qX">LQR Q: cart position</label><input id="qX" type="number" min="0.01" max="10000" step="1" value="25"><div class="unit">state penalty</div></div>
-<div class="field"><label for="qV">LQR Q: cart velocity</label><input id="qV" type="number" min="0.01" max="10000" step="0.5" value="3"><div class="unit">state penalty</div></div>
-<div class="field"><label for="qA">LQR Q: angle error</label><input id="qA" type="number" min="0.01" max="10000" step="5" value="180"><div class="unit">state penalty</div></div>
-<div class="field"><label for="qW">LQR Q: angular velocity</label><input id="qW" type="number" min="0.01" max="10000" step="1" value="18"><div class="unit">state penalty</div></div>
-<div class="field"><label for="rU">LQR R: force effort</label><input id="rU" type="number" min="0.001" max="1000" step="0.1" value="1.2"><div class="unit">input penalty</div></div>
-<div class="field"><label for="catchAngle">LQR catch angle</label><input id="catchAngle" type="number" min="1" max="45" step="1" value="14"><div class="unit">degrees from upright</div></div>
-<div class="field"><label for="catchRate">Catch angular speed</label><input id="catchRate" type="number" min="0.1" max="30" step="0.1" value="4.5"><div class="unit">rad/s</div></div>
-<div class="field"><label for="energyGain">Swing-up energy gain</label><input id="energyGain" type="number" min="0.01" max="100" step="0.1" value="7"><div class="unit">acceleration command gain per joule; tuning parameter</div></div><div class="field"><label for="centerX">Cart-centering position gain</label><input id="centerX" type="number" min="0" max="20" step="0.1" value="0.3"><div class="unit">m/s² per metre</div></div><div class="field"><label for="centerV">Cart-centering velocity gain</label><input id="centerV" type="number" min="0" max="20" step="0.1" value="0.5"><div class="unit">1/s · damping term</div></div>
-<div class="field"><label for="startupForce">Startup excitation force</label><input id="startupForce" type="number" min="-20" max="20" step="0.1" value="1.0"><div class="unit">N · brief cart push to break exact symmetry</div></div><div class="field"><label for="startupDuration">Startup excitation duration</label><input id="startupDuration" type="number" min="0" max="0.5" step="0.01" value="0.08"><div class="unit">s · applied through the motor model</div></div><div class="field"><label for="initialAngle">Initial angle from hanging</label><input id="initialAngle" type="number" min="-180" max="180" step="1" value="0"><div class="unit">degrees · 0° means exactly hanging</div></div>
-</div><p class="hint">LQR gain is recalculated from the linearised model when you press Apply design. Swing-up uses energy shaping and the nonlinear equations to calculate the requested cart force; motor voltage/current, force slew and track limits still apply. At exact hanging with zero motion, the controller has no direction to start pumping, so a transparent, user-configurable startup excitation breaks the symmetry and is still limited by the motor model.</p></details>
-<div class="btnrow" style="margin-top:12px"><button class="primary" id="applyDesign">Apply design & recalculate LQR</button><button id="startUpright">Start upright (test LQR)</button><button id="reset">Restart from hanging</button></div><p class="hint">Changing a parameter does not change the running model until you apply the design. Applying the design restarts the run for a clean comparison.</p>
-</section>
-<section class="card"><h2>Disturbance & experiment</h2><div class="fields">
-<div class="field"><label for="distType">Disturbance</label><select id="distType"><option value="bob">Horizontal force on bob</option><option value="cart">Impulse on cart</option><option value="kick">Angular velocity kick</option></select></div>
-<div class="field"><label for="distMag">Magnitude</label><input id="distMag" type="number" min="0.01" max="100" step="0.5" value="4"></div>
-<div class="field"><label for="distDur">Bob force duration</label><input id="distDur" type="number" min="0.01" max="2" step="0.01" value="0.10"><div class="unit">s</div></div>
-<div class="field"><label for="speed">Playback speed</label><select id="speed"><option value="0.25">0.25×</option><option value="0.5" selected>0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
-</div><div class="btnrow" style="margin-top:10px"><button id="left">◀ Push left</button><button class="primary" id="right">Push right ▶</button><button id="pause">Pause</button></div><label class="inlinecheck"><input id="schedule" type="checkbox"> Run repeatable disturbance schedule at 8, 14, 20, 26, 32 s</label><p class="hint">Use the same initial state and disturbance schedule when comparing controllers. “Disturbance” is a test input, not a measured real-world load.</p></section>
-<section class="card"><h2>Run metrics</h2><div class="stats"><div class="stat"><span>Absolute angle error</span><b id="mErr">—</b></div><div class="stat"><span>Last recovery time</span><b id="mRec">—</b></div><div class="stat"><span>Cart position</span><b id="mX">—</b></div><div class="stat"><span>Peak motor current</span><b id="mI">—</b></div><div class="stat"><span>Peak force request / applied</span><b id="mF">—</b></div><div class="stat"><span>Time near upright</span><b id="mUp">0.0 s</b></div></div><div class="status" id="status">Initialising model…</div></section>
-<section class="card"><h2>Event log</h2><div id="log" class="log"></div></section>
-</aside>
-<section class="plots"><div class="card"><h2>Angle error from upright (degrees)</h2><canvas id="c1"></canvas><div class="legend">Red = measured angle error · green = upright target</div></div><div class="card"><h2>Cart position (m)</h2><canvas id="c2"></canvas><div class="legend">Cyan = cart position · red dashed = track ends</div></div><div class="card"><h2>Motor / control effort</h2><canvas id="c3"></canvas><div class="legend">Orange = applied cart force / limit · purple = motor current / limit</div></div></section>
-<section class="card full"><div class="warning"><b>Engineering limitations:</b> this is a transparent lumped-parameter simulation, not a validated digital twin. It assumes a rigid uniform rod, a solid spherical bob, viscous friction, a quasi-static DC motor model, ideal bidirectional voltage drive, and no backlash, belt elasticity, wheel slip, driver dead-zone, current-loop dynamics, sensor noise, structural flex, or MCU/communication delay beyond sample-and-hold. Track end-stops are simplified. Validate equations and parameters against the actual rig before fabrication or safety decisions.</div></section>
-</main>
-<script>
-'use strict';
-const $=id=>document.getElementById(id), num=id=>Number($(id).value);
-const DT=0.002, WINDOW=20;
-const inputIds=['cartMass','cartWidth','cartHeight','wheelDia','rodMass','length','rodDia','bobMass','bobDia','track','gravity','cartFriction','pivotFriction','voltage','resistance','kt','noLoad','gear','efficiency','pulley','currentLimit','forceSlew','motorCpr','angleCpr','driverCurrent','sample','qX','qV','qA','qW','rU','catchAngle','catchRate','energyGain','centerX','centerV','startupForce','startupDuration','initialAngle'];
-let P={},K=[0,0,0,0],sim=null,paused=false,last=performance.now(),frame=0,dpr=1,CW=900,CH=450;
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),wrapPi=a=>Math.atan2(Math.sin(a),Math.cos(a)),deg=r=>r*180/Math.PI;
-function readDesign(){
- const g=id=>num(id); P={M:g('cartMass'),cartW:g('cartWidth'),cartH:g('cartHeight'),wheelD:g('wheelDia'),mr:g('rodMass'),L:g('length'),rodD:g('rodDia'),mb:g('bobMass'),bobD:g('bobDia'),track:g('track'),g:g('gravity'),b:g('cartFriction'),c:g('pivotFriction'),V:g('voltage'),R:g('resistance'),Kt:g('kt'),rpm:g('noLoad'),G:g('gear'),eta:g('efficiency'),r:g('pulley'),Imax:Math.min(g('currentLimit'),g('driverCurrent')),slew:g('forceSlew'),motorCpr:g('motorCpr'),angleCpr:g('angleCpr'),Ts:g('sample'),Q:[g('qX'),g('qV'),g('qA'),g('qW')],Rcost:g('rU'),catchAngle:g('catchAngle')*Math.PI/180,catchRate:g('catchRate'),kE:g('energyGain'),centerX:g('centerX'),centerV:g('centerV'),kickF:g('startupForce'),kickDur:g('startupDuration'),theta0:g('initialAngle')*Math.PI/180};
- P.mp=P.mb+P.mr; P.h=P.mb*P.L+P.mr*P.L/2; P.Ip=P.mb*P.L*P.L+(2/5)*P.mb*(P.bobD/2)**2+P.mr*(P.L*P.L/3+(P.rodD/2)**2/4); P.J=P.Ip; P.Etop=2*P.g*P.h; P.Ke=P.V/(P.rpm*2*Math.PI/60); P.xCounts=P.motorCpr*P.G/(2*Math.PI*P.r); P.angleCounts=P.angleCpr/(2*Math.PI); P.Fmax=P.eta*P.G*P.Kt*P.Imax/P.r;
-}
-const zeros=(r,c)=>Array.from({length:r},()=>Array(c).fill(0));
-const mul=(a,b)=>{let o=zeros(a.length,b[0].length);for(let i=0;i<a.length;i++)for(let k=0;k<b.length;k++)for(let j=0;j<b[0].length;j++)o[i][j]+=a[i][k]*b[k][j];return o};
-const tr=a=>a[0].map((_,j)=>a.map(r=>r[j]));
-const addM=(a,b,s=1)=>a.map((r,i)=>r.map((v,j)=>v+s*b[i][j]));
-function calcLQR(){
- const a=P.M+P.mp,d=P.Ip,bb=-P.h,det=a*d-bb*bb;
- if(det<=1e-10)throw Error('Invalid inertia/mass combination.');
- const inv=[[d/det,-bb/det],[-bb/det,a/det]], C=[[0,-P.b,0,0],[0,0,P.g*P.h,-P.c]], A=zeros(4,4);A[0][1]=1;A[2][3]=1;
- const MC=mul(inv,C);A[1]=MC[0];A[3]=MC[1];const B=zeros(4,1);B[1][0]=inv[0][0];B[3][0]=inv[1][0];
- const Ad=A.map((row,i)=>row.map((v,j)=>v*P.Ts+(i===j?1:0))),Bd=B.map(row=>row.map(v=>v*P.Ts));
- const Q=zeros(4,4);P.Q.forEach((v,i)=>Q[i][i]=v);const R=P.Rcost;
- // Kleinman policy iteration: solve the discrete Lyapunov equation for a stabilising
- // initial gain, then improve the gain. This avoids unstable forward Riccati integration.
- const starts=[[-4.12,-5.41,39.02,8.96],[-2,-3,20,5],[-8,-10,55,12],[-1,-1,10,2]];
- let finalK=null,lastError='no stabilising initial gain found';
- for(const initial of starts){
-  let gain=initial.slice(),failed=false;
-  for(let policy=0;policy<40;policy++){
-   const Acl=addM(Ad,mul(Bd,[gain]),-1);let X=addM(Q,mul(mul(tr([gain]),[[R]]),[gain]));
-   let lyapOK=false;
-   for(let it=0;it<5000;it++){
-    const Xn=addM(addM(Q,mul(mul(tr([gain]),[[R]]),[gain])),mul(mul(tr(Acl),X),Acl));
-    let err=0;for(let i=0;i<4;i++)for(let j=0;j<4;j++)err=Math.max(err,Math.abs(Xn[i][j]-X[i][j]));
-    X=Xn;if(!X.flat().every(Number.isFinite)||Math.max(...X.flat().map(Math.abs))>1e12){failed=true;lastError='initial feedback was not stabilising';break;}
-    if(err<1e-8){lyapOK=true;break;}
-   }
-   if(failed||!lyapOK){failed=true;lastError='Lyapunov iteration did not converge for the selected model';break;}
-   const BtXAd=mul(mul(tr(Bd),X),Ad),BtXB=mul(mul(tr(Bd),X),Bd)[0][0],newGain=BtXAd[0].map(v=>v/(R+BtXB));
-   const delta=Math.max(...newGain.map((v,i)=>Math.abs(v-gain[i])));gain=newGain;
-   if(!gain.every(Number.isFinite)){failed=true;lastError='non-finite gain';break;}
-   if(delta<1e-6){finalK=gain;break;}
+<!--
+=====================================================================================================================
+ L.C.P.E. — inverted pendulum, MOTOR ON THE CART, live auto-LQR (rebuilt 27 Oct 2026; old file: *_pre_autolqr.html)
+ Self-contained: inline JS/CSS, no CDN. Core = htmlsim/autolqr/core.js (embedded verbatim), mirrors sim/stepper_cart_sim.py.
+ 17HS4401 + DRV8825 (2.0 A, 1/16), 24 V, GT2 20T omega belt, Ø8 rails, AS5600, ESP32 @ 200 Hz. SI units, θ = 0 upright.
+=====================================================================================================================
+ STATES s = [x, ẋ, θ, θ̇, ψ, ψ̇, φ, φ̇]: cart, rod hub angle θ, bob angle ψ (flexible Ø8 rod), rotor angle φ (motor on cart).
+ MASS: rod m_r = ρπd²/4·(L+0.03), l_r = (L+0.03)/2 − 0.01, J_r = m_r l_r² + m_r (L+0.03)²/12 ; bob m_b at L (m_b = 0 allowed:
+       bare arm, ψ slaved to θ). Rod bending: κ = 3EI/L_f·(L/L_f)², L_f = L − 0.02, damping ζ_s = 0.01.
+ EXACT COUPLED DYNAMICS (Lagrange, solved each RK4 stage):
+   M_t ẍ + m_r l_r cosθ θ̈ + m_b L cosψ ψ̈ = Q_x + m_r l_r sinθ θ̇² + m_b L sinψ ψ̇²
+   J_r θ̈ + m_r l_r cosθ ẍ = m_r g l_r sinθ + κ(ψ−θ) + c_s(ψ̇−θ̇) − c_p θ̇ − C_p tanh(θ̇/0.01)
+   m_b L² ψ̈ + m_b L cosψ ẍ = m_b g L sinψ − κ(ψ−θ) − c_s(ψ̇−θ̇) + F_push L cosψ
+   Q_x = F_belt + F_stop + F_push − F_c tanh(ẋ/0.005) − b_c ẋ
+ BELT: δ = rφ − x, k(x) = EA(1/(x−x_A) + 1/(x_B−x)), x_A,B = ∓0.32 m, backlash dead-band ±h, F = k(δ∓h) + c_b δ̇.
+ STEPPER (hybrid, load-angle model): J φ̈ = τ − rF_belt − b_r(φ̇ − ω_cmd) − b_v φ̇ − T_det sin(4N_rφ)
+   τ = −T_pk(φ̇) sin(N_r(φ − φ_cmd)), T_pk = 0.85 K_t min(I_set, I_avail(ω)) from V² = (IR + K_tω)² + (I N_r ω L_ph)².
+   |load angle| > π/2 ⇒ rotor slips whole teeth ⇒ LOST STEPS (shown; a failure, never hidden).
+ FIRMWARE: AS5600 12-bit + noise + offset; θ̇ by difference + 1st-order LPF, corner = min(30 Hz, max(10 Hz, f_bend));
+   1-sample delay; accel command u → jerk-limited (879 m/s³), v-capped step generator (φ_cmd quantised to 1/16 step).
+ AUTO-LQR (re-solved on every slider change): linearise about upright with accel input
+   A: ẍ = u, θ̈ = (m_h g θ − c_p θ̇ − m_h u)/J_p ; ZOH via expm, augment one-sample delay, iterate the discrete Riccati
+   recursion (Joseph form) to convergence ⇒ K (5 gains). Q = (427.4, 0.111, 117.3, 0.339), R = 1.626·(8.65/a_max)²;
+   light-arm set (m_b < 0.1 kg): Q × (0.5, 300, 10, 0.1), R × 0.1 (same as the ESP32 2-entry table, PAYLOAD_RANGE.md).
+   a_max = min(8.65, 0.65 T_pk0/(r M_eff)), v_max scaled with the pull-out-torque cliff speed. Manual-gain mode available.
+ SWING-UP: E = ½J_p θ̇² + m_h g(cosθ − 1); v_ref = −V sat(k_e(E_ref − E_n)) tanh(sinθ/ε) − k_xs x̂ ; catch |θ|<0.32, |θ̇|<5.7.
+ HONESTY: RK4 dt = 1e-4 s, no clamps on the plant. Falls (|θ|>0.5) and soft-limit trips (±0.15 m in SWING-UP, ±0.22 m in BALANCE) stop the run.
+ Headless results: htmlsim/autolqr/test_results_autolqr.txt (node test_harness.js).
+=====================================================================================================================
+
+-->
+<html lang="en"><head><meta charset="utf-8"><title>LCPE inverted pendulum — auto-LQR</title><style>body{margin:0;background:#070b10;color:#d5e1ec;font:13px system-ui,sans-serif}h1{font-size:16px;margin:8px 14px;color:#38d6f5}
+#wrap{display:flex;gap:12px;padding:0 12px 12px;flex-wrap:wrap}#left{flex:1 1 700px}#right{flex:0 0 400px;max-height:calc(100vh - 50px);overflow:auto}
+canvas{display:block;border:1px solid #1d2b3a;border-radius:6px;width:100%;height:auto}#plots{display:flex;gap:8px;margin-top:8px}#plots canvas{width:50%}
+button{background:#13324a;color:#d5e1ec;border:1px solid #2b5a7a;border-radius:4px;padding:5px 9px;margin:2px;cursor:pointer}button:hover{background:#1b4566}
+.sl{margin:4px 0}.sl label{display:block;font-size:12px;color:#9fb3c6}.sl input{width:100%}table{border-collapse:collapse;width:100%;font-size:12px}td{border-bottom:1px solid #16222e;padding:2px 4px;vertical-align:top}
+fieldset{border:1px solid #1d2b3a;border-radius:6px;margin:6px 0}legend{color:#38d6f5}.warn{color:#ff8b7b;font-weight:bold}.ok{color:#7be07b}.note{color:#e0c060}#barw{height:8px;background:#16222e;border-radius:4px}#bar{height:8px;border-radius:4px}
+small{color:#7f93a6}</style></head><body><h1>L.C.P.E. — motor-on-cart inverted pendulum · physics-truthful sim with live auto-LQR</h1>
+<div id="wrap"><div id="left"><canvas id="scene" width="1100" height="520"></canvas>
+<div id="plots"><canvas id="pth" width="540" height="150"></canvas><canvas id="px" width="540" height="150"></canvas></div>
+<fieldset><legend>Live readouts</legend><div id="barw"><div id="bar"></div></div><table id="ro"></table></fieldset></div>
+<div id="right"><fieldset><legend>Run</legend>
+<button id="b_swing">Start hanging → swing-up</button><button id="b_up">Start upright (hand release)</button> from <select id="th0"><option>0.05</option><option selected>0.1</option><option>0.2</option></select> rad<br>
+<button id="b_pl">← Push</button><button id="b_pr">Push →</button><button id="b_pause">Pause</button><button id="b_reset">Reset all</button>
+speed <select id="spd"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+<div id="cap" class="ok"></div></fieldset>
+<fieldset><legend>Controller</legend><select id="ctrl"><option value="auto" selected>Auto-LQR (re-solved live on every change)</option><option value="manual">Manual gains (PID / LQR-form)</option></select>
+<div id="kinfo"><small></small></div><div id="manbox" style="display:none"><small>u = −(K_x·x̂ + K_v·v̂ + K_θ·θ + K_θ̇·θ̇ + K_i·∫θ) [m/s²]. Loaded from the current auto gains when selected.</small><div id="mansl"></div></div></fieldset>
+<fieldset><legend>Physical parameters (gains re-computed automatically)</legend><div id="sliders"></div></fieldset>
+<small>Pass/fail is honest: no clamps on the plant, no fake balancing. If it falls, it falls; lost steps are real rotor slips.</small></div></div>
+<script id="core">
+// ===== LCPE core (pure JS, no DOM): plant + firmware + live LQR. Extracted verbatim by test_harness.js =====
+var LCPE = (function () {
+  "use strict";
+  var NR = 50, KT = 0.40 / (Math.SQRT2 * 1.7), JROT = 54e-7 + 6e-7, KDRV = 0.85, RPH = 1.5, RDRV = 0.4, LPH = 2.8e-3;
+  var TDET = 0.038, BV = 5e-5, ZETA_R = 0.05, ZETA_B = 0.03, ZETA_S = 0.01, XA = -0.32, XB = 0.32;
+  var QD = [427.4004929023249, 0.11118823121018721, 117.28446102809185, 0.3391572989508432], RD = 1.6257514991865385;
+  var A_CAP = 8.64872069102314, J_MAX = 879.1041365134324, W_CAP = 0.6198690375616736 / (20 * 2e-3 / (2 * Math.PI));
+  var W_CLIFF0 = null;
+  function defaults() {
+    return { mb: 0.25, L: 0.30, Mc: 0.75, g: 9.81, Fc: 1.5, bc: 0.5, cp: 0.004, Cp: 0.002, teeth: 20, Iset: 2.0, Vbus: 24,
+      EA: 10e3, backlash: 0.1e-3, sigma_deg: 0.043, offset_deg: 0, usteps: 16, rod_d: 0.008, rho: 7850, E: 193e9,
+      Ts: 0.005, fc_th: 30, xlim: 0.22, xlim_sw: 0.15, x_hard: 0.255, push_Ns: 0.08,
+      ke: 10, Vsw: 0.30, Eref: 0.08, kxs: 2.3, kvs: 20, a_sw_cap: 7.8, thsw: 0.32, wsw: 5.7, eps_sw: 0.01,
+      ctrl: "auto", man: { kth: -50, kthd: -8.3, kx: -15.5, kv: -11.1, ki: 0 }, pert: 0.0 };
   }
-  if(finalK)break;
- }
- if(!finalK)throw Error('LQR calculation failed: '+lastError+'. Try less extreme parameter values.');
- K=finalK;P.A=A;P.B=B;P.K=K;
-}
-function note(msg,cls=''){const el=$('log'),d=document.createElement('div');d.textContent=msg;if(cls)d.className=cls;el.appendChild(d);while(el.children.length>80)el.removeChild(el.firstChild);el.scrollTop=el.scrollHeight;}
-function resetSim(startUpright=false){const th=startUpright?(Math.PI+2*Math.PI/180):P.theta0;sim={z:[0,0,wrapPi(th),0],t:0,k:0,mode:startUpright?1:0,startUpright,cmd:0,force:0,voltage:0,current:0,omega:0,queue:[],pulse:0,distCount:0,distAt:0,recovering:false,rec:null,upright:0,peakI:0,peakF:0,accum:0,ctrlAccum:0,meas:[0,0,0,0],prevMeas:null,history:{t:[],a:[],x:[],f:[],i:[],mode:[]},scheduleIdx:0};paused=false;$('pause').textContent='Pause';$('log').innerHTML='';$('mRec').textContent='—';if(startUpright){note('LQR test: started 2° from upright with the balance controller already active.','good');}else{note('Reset: cart starts centred; pendulum starts '+deg(th).toFixed(1)+'° from hanging.','event');if(!startUpright&&P.kickDur>0)note('Startup excitation: '+P.kickF.toFixed(2)+' N requested for '+P.kickDur.toFixed(2)+' s; actual force remains motor/driver limited.','event');}note('Computed LQR K = ['+K.map(v=>v.toFixed(3)).join(', ')+']');$('status').textContent=startUpright?'Upright-start LQR test. This tests balance, not swing-up.':'Hanging-start run. Swing-up controller is active until the LQR catch region is reached.';}
-function measure(){const z=sim.z,xc=Math.round(z[0]*P.xCounts)/P.xCounts,ac=Math.round(wrapPi(z[2])*P.angleCounts)/P.angleCounts;let xv=0,av=0;if(sim.prevMeas){xv=(xc-sim.prevMeas[0])/P.Ts;av=wrapPi(ac-sim.prevMeas[1])/P.Ts;}sim.prevMeas=[xc,ac];sim.meas=[xc,xv,ac,av];}
-function motorForCommand(Fcmd){const z=sim.z,omega=(z[1]/P.r)*P.G, Ireq=Fcmd*P.r/(P.eta*P.G*P.Kt);let Vcmd=Ireq*P.R+P.Ke*omega;Vcmd=clamp(Vcmd,-P.V,P.V);let I=clamp((Vcmd-P.Ke*omega)/P.R,-P.Imax,P.Imax);let F=P.eta*P.G*P.Kt*I/P.r;
- const maxRpm=P.rpm; if(Math.abs(omega)*60/(2*Math.PI)>maxRpm){if(Math.sign(F)===Math.sign(z[1]))F=0;}
- return {F,V:Vcmd,I,omega};}
-function dynamics(z,F,Fe){const [x,v,th,w]=z,s=Math.sin(th),c=Math.cos(th),a=P.M+P.mp,bb=P.h*c,d=P.Ip;const r1=F-P.b*v+P.h*s*w*w+Fe;const r2=-P.c*w-P.g*P.h*s+Fe*P.L*c;const det=a*d-bb*bb;const xdd=(d*r1-bb*r2)/det,thdd=(a*r2-bb*r1)/det;return [v,xdd,w,thdd];}
-function rk4(z,F,Fe){const plus=(a,b,s)=>a.map((v,i)=>v+s*b[i]),k1=dynamics(z,F,Fe),k2=dynamics(plus(z,k1,DT/2),F,Fe),k3=dynamics(plus(z,k2,DT/2),F,Fe),k4=dynamics(plus(z,k3,DT),F,Fe);return z.map((v,i)=>v+DT*(k1[i]+2*k2[i]+2*k3[i]+k4[i])/6);}
-function swingup(z){
- const [x,v,th,w]=z;
- // Energy is measured from the hanging equilibrium; upright energy is 2*g*h.
- const E=0.5*P.Ip*w*w+P.g*P.h*(1-Math.cos(th));
- const energyError=E-P.Etop;
- // With this angle convention, dE/dt = -h*cos(th)*w*xdd - c*w^2.
- // The sign-based energy-shaping command drives E toward Etop.
- const phase=w*Math.cos(th);
- const pump=P.kE*energyError*Math.sign(phase);
- const accel=pump-P.centerX*x-P.centerV*v;
- // Invert the nonlinear equations used by dynamics() to request cart force.
- const a=P.M+P.mp, bb=P.h*Math.cos(th), d=P.Ip, det=a*d-bb*bb;
- const r2=-P.c*w-P.g*P.h*Math.sin(th);
- return (det*accel+bb*r2)/d+P.b*v-P.h*Math.sin(th)*w*w;
-}
-function ctrl(){measure();const [x,v,th,w]=sim.meas,phi=wrapPi(th-Math.PI),z=sim.z;let mode=sim.mode;
- if(mode===1){if(Math.abs(phi)>32*Math.PI/180||Math.abs(w)>9){sim.mode=0;note('t='+sim.t.toFixed(2)+' s: left LQR balance region → swing-up.','bad');}}
- else if(Math.abs(phi)<P.catchAngle&&Math.abs(w)<P.catchRate&&Math.abs(x)<Math.max(.05,P.track*.7)){sim.mode=1;note('t='+sim.t.toFixed(2)+' s: LQR catch region entered.','good');}
- let Fcmd;if(!sim.startUpright&&sim.t<P.kickDur){Fcmd=P.kickF;}else if(sim.mode===1){Fcmd=-(K[0]*x+K[1]*v+K[2]*phi+K[3]*w);}else Fcmd=swingup(z);
- const xSoft=P.track*.78,over=Math.abs(z[0])-xSoft;if(over>0)Fcmd+=-Math.sign(z[0])*(80*over*over+18*z[1]*over/Math.max(.05,P.track-xSoft));
- Fcmd=clamp(Fcmd,-P.Fmax,P.Fmax);const maxDelta=P.slew*P.Ts;Fcmd=clamp(Fcmd,sim.cmd-maxDelta,sim.cmd+maxDelta);sim.cmd=Fcmd;const act=motorForCommand(Fcmd);sim.force=act.F;sim.voltage=act.V;sim.current=act.I;sim.omega=act.omega;sim.peakI=Math.max(sim.peakI,Math.abs(act.I));sim.peakF=Math.max(sim.peakF,Math.abs(act.F));
-}
-const DIST_SCHEDULE=[[8,4],[14,-5],[20,3],[26,-6],[32,4]];
-function step(){const s=sim,t=s.t,z=s.z;
- if($('schedule').checked&&s.scheduleIdx<DIST_SCHEDULE.length&&t>=DIST_SCHEDULE[s.scheduleIdx][0]){const d=DIST_SCHEDULE[s.scheduleIdx++];s.queue.push({type:'cart',imp:d[1]});s.distAt=t;s.recovering=true;s.distCount++;note('t='+t.toFixed(2)+' s: scheduled cart impulse '+d[1]+' N·s','event');}
- while(s.queue.length){const q=s.queue.shift();if(q.type==='cart'){z[1]+=(q.imp!==undefined?q.imp:q.v)/(P.M+P.mp);}else if(q.type==='kick'){z[3]+=q.v;}else if(q.type==='bob'){s.pulse=q.F;s.pulseLeft=q.dur;}s.distAt=t;s.recovering=true;}
- if(s.ctrlAccum>=P.Ts-DT/2||s.k===0){ctrl();s.ctrlAccum=0;}s.ctrlAccum+=DT;
- let Fe=0;if(s.pulseLeft>0){Fe=s.pulse;s.pulseLeft-=DT;}else s.pulse=0;
- s.z=rk4(z,s.force,Fe);s.z[2]=wrapPi(s.z[2]);if(Math.abs(s.z[0])>P.track){s.z[0]=Math.sign(s.z[0])*P.track;if(Math.sign(s.z[1])===Math.sign(s.z[0]))s.z[1]*=-.15;note('Track end-stop reached.','bad');}
- const phi=wrapPi(s.z[2]-Math.PI);if(s.mode===1&&Math.abs(phi)<5*Math.PI/180)s.upright+=DT;
- if(s.recovering&&s.mode===1&&Math.abs(phi)<3*Math.PI/180&&Math.abs(s.z[3])<.3&&t-s.distAt>.25){s.rec=t-s.distAt;s.recovering=false;$('mRec').textContent=s.rec.toFixed(2)+' s';note('Recovered to upright band in '+s.rec.toFixed(2)+' s','good');}
- s.t+=DT;s.k++;if(s.k%5===0){const h=s.history;h.t.push(s.t);h.a.push(deg(phi));h.x.push(s.z[0]);h.f.push(s.force/Math.max(P.Fmax,.01));h.i.push(s.current/Math.max(P.Imax,.01));h.mode.push(s.mode);while(h.t.length&&s.t-h.t[0]>WINDOW){for(const key in h)h[key].shift();}}
-}
-function applyDist(dir){const mag=num('distMag'),type=$('distType').value;if(!Number.isFinite(mag)||mag<=0){$('status').textContent='Enter a disturbance magnitude greater than zero.';return;}if(type==='bob')sim.queue.push({type:'bob',F:dir*mag,dur:clamp(num('distDur'),.01,2)});else if(type==='cart')sim.queue.push({type:'cart',v:dir*mag/(P.M+P.mp)});else sim.queue.push({type:'kick',v:dir*mag});sim.distCount++;$('status').textContent='Disturbance queued: '+type+', magnitude '+mag;note('t='+sim.t.toFixed(2)+' s: '+type+' disturbance, '+(dir>0?'right':'left')+', '+mag,'event');}
-$('left').onclick=()=>applyDist(-1);$('right').onclick=()=>applyDist(1);$('startUpright').onclick=()=>resetSim(true);$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'Resume':'Pause';};$('reset').onclick=()=>resetSim();$('applyDesign').onclick=()=>{try{readDesign();calcLQR();resetSim();note('Motor force ceiling at zero speed: ±'+P.Fmax.toFixed(2)+' N.');note('Encoder resolutions: '+P.xCounts.toFixed(0)+' counts/m; '+P.angleCounts.toFixed(1)+' counts/rad.');note('Bob weight: '+(P.mb*P.g).toFixed(2)+' N; pendulum inertia about pivot: '+P.Ip.toFixed(5)+' kg·m²; motor back-EMF estimate: '+P.Ke.toFixed(5)+' V·s/rad.');}catch(e){$('status').textContent='Model error: '+e.message;note('ERROR: '+e.message,'bad');}};
-function resize(){const cv=$('sim');CW=cv.parentElement.clientWidth;CH=CW*.48;dpr=window.devicePixelRatio||1;cv.width=CW*dpr;cv.height=CH*dpr;cv.style.height=CH+'px';for(const id of ['c1','c2','c3']){let c=$(id);c.width=Math.max(1,c.clientWidth)*dpr;c.height=170*dpr;}}
-function draw(){const c=$('sim').getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,CW,CH);c.fillStyle='#080d13';c.fillRect(0,0,CW,CH);const world=Math.max(P.track*2+0.6,3.4),scale=CW/world,X=x=>CW/2+x*scale,Y=y=>CH*.60-y*scale;
- c.strokeStyle='#142130';c.lineWidth=1;for(let x=-world/2;x<=world/2;x+=.25){c.beginPath();c.moveTo(X(x),0);c.lineTo(X(x),CH);c.stroke();}c.strokeStyle='#34475d';c.lineWidth=3;c.beginPath();c.moveTo(X(-P.track),Y(-.08));c.lineTo(X(P.track),Y(-.08));c.stroke();c.strokeStyle='#ff6d5e';c.setLineDash([5,5]);for(const x of [-P.track,P.track]){c.beginPath();c.moveTo(X(x),Y(.18));c.lineTo(X(x),Y(-.17));c.stroke();}c.setLineDash([]);
- const [x,v,th,w]=sim.z,bx=x+P.L*Math.sin(th),by=-P.L*Math.cos(th),cw=.28,ch=.13;const cartW=P.cartW,cartH=P.cartH;c.fillStyle='#60d3ff';c.strokeStyle='#d8f4ff';c.lineWidth=1.5;c.fillRect(X(x-cartW/2),Y(cartH/2),cartW*scale,cartH*scale);c.strokeRect(X(x-cartW/2),Y(cartH/2),cartW*scale,cartH*scale);c.strokeStyle='#cdd9e5';c.lineWidth=Math.max(3,scale*.012);c.beginPath();c.moveTo(X(x),Y(0));c.lineTo(X(bx),Y(by));c.stroke();c.fillStyle='#ff9e42';c.beginPath();c.arc(X(bx),Y(by),Math.max(7,P.bobD*scale/2),0,Math.PI*2);c.fill();c.fillStyle='#d6e1ed';c.beginPath();c.arc(X(x),Y(0),5,0,Math.PI*2);c.fill();c.fillStyle='#7d92a8';c.font='12px ui-monospace,Consolas';c.fillText('−'+P.track.toFixed(2)+' m',X(-P.track)+4,Y(-.18));c.fillText('+'+P.track.toFixed(2)+' m',X(P.track)-52,Y(-.18));
- const phi=wrapPi(th-Math.PI);$('badge').textContent=sim.mode?'LQR BALANCE':'SWING-UP / RELEASE';$('badge').style.color=sim.mode?'var(--green)':'var(--orange)';$('hud').textContent=`t       ${sim.t.toFixed(2)} s\nangle   ${deg(th).toFixed(1)}° from down\nerror   ${deg(phi).toFixed(2)}° from up\nx       ${x.toFixed(3)} m\nv       ${v.toFixed(3)} m/s\nforce   ${sim.force.toFixed(2)} N\nvoltage ${sim.voltage.toFixed(2)} V\ncurrent ${sim.current.toFixed(2)} A`;
- $('mErr').textContent=Math.abs(deg(phi)).toFixed(2)+'°';$('mX').textContent=x.toFixed(3)+' m';$('mI').textContent=sim.peakI.toFixed(2)+' A';$('mF').textContent=sim.peakF.toFixed(2)+' N';$('mUp').textContent=sim.upright.toFixed(2)+' s';}
-function chart(id,series,min,max,ticks,lines=[]){const c=$(id),g=c.getContext('2d'),W=c.clientWidth,H=170;g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);g.fillStyle='#08111b';g.fillRect(0,0,W,H);const L=35,R=8,T=8,B=20,pw=W-L-R,ph=H-T-B,h=sim.history,tEnd=Math.max(WINDOW,sim.t),tStart=tEnd-WINDOW,xx=t=>L+pw*(t-tStart)/WINDOW,yy=v=>T+ph*(1-(v-min)/(max-min));g.font='10px ui-monospace,Consolas';g.fillStyle='#8094aa';g.strokeStyle='#1c2b3c';for(const v of ticks){g.beginPath();g.moveTo(L,yy(v));g.lineTo(W-R,yy(v));g.stroke();g.fillText(String(v),2,yy(v)+3);}for(const [v,col] of lines){g.strokeStyle=col;g.setLineDash([4,4]);g.beginPath();g.moveTo(L,yy(v));g.lineTo(W-R,yy(v));g.stroke();g.setLineDash([]);}for(const [arr,color] of series){g.strokeStyle=color;g.lineWidth=1.7;g.beginPath();for(let i=0;i<h.t.length;i++){const px=xx(h.t[i]),py=yy(clamp(arr[i],min,max));if(i===0)g.moveTo(px,py);else g.lineTo(px,py);}g.stroke();}for(let i=0;i<=4;i++)g.fillText((tStart+i*WINDOW/4).toFixed(0)+'s',xx(tStart+i*WINDOW/4)-8,H-5);}
-function charts(){chart('c1',[[sim.history.a,'#ff6d5e']],-180,180,[-180,-90,0,90,180],[[0,'#5ee0a0']]);chart('c2',[[sim.history.x,'#60d3ff']],-P.track*1.15,P.track*1.15,[-P.track,0,P.track],[[-P.track,'#ff6d5e'],[P.track,'#ff6d5e']]);chart('c3',[[sim.history.f,'#ff9e42'],[sim.history.i,'#c4a0ff']],-1.1,1.1,[-1,-.5,0,.5,1],[[0,'#53677d']]);}
-function loop(now){const elapsed=Math.min(.05,(now-last)/1000);last=now;if(!paused){sim.accum+=elapsed*num('speed');let n=0;while(sim.accum>=DT&&n++<4000){if(sim.ctrlAccum+DT>=P.Ts-1e-9)sim.ctrlAccum=P.Ts;step();sim.accum-=DT;}}draw();if((frame++%2)===0)charts();requestAnimationFrame(loop);}
-window.addEventListener('resize',resize);document.addEventListener('keydown',e=>{const tag=e.target.tagName;if(tag==='INPUT'||tag==='SELECT')return;if(e.key==='ArrowLeft'){e.preventDefault();applyDist(-1);}if(e.key==='ArrowRight'){e.preventDefault();applyDist(1);}if(e.code==='Space'){e.preventDefault();$('pause').click();}if(e.key.toLowerCase()==='r')resetSim();});
-readDesign();calcLQR();resetSim();resize();requestAnimationFrame(loop);
-</script></body></html>
+  function derived(p) {
+    if (W_CLIFF0 === null) { W_CLIFF0 = 1; var p0 = defaults(), d0 = { }; W_CLIFF0 = wCliff(p0, d0); }
+    var d = {}, rl = p.L + 0.03, rd = p.rod_d;
+    d.m_r = p.rho * Math.PI * rd * rd / 4 * rl; d.l_r = rl / 2 - 0.010;
+    d.J_r = d.m_r * d.l_r * d.l_r + d.m_r * rl * rl / 12; d.m_b = Math.max(0, p.mb);
+    var EI = p.E * Math.PI * Math.pow(rd, 4) / 64, Lf = p.L - 0.020;
+    d.kappa = 3 * EI / Lf * Math.pow(p.L / Lf, 2);
+    d.c_s = d.m_b > 0 ? 2 * ZETA_S * Math.sqrt(d.kappa * d.m_b * p.L * p.L) : 0;
+    d.f_bend = d.m_b > 0 ? Math.sqrt(d.kappa / (d.m_b * p.L * p.L)) / (2 * Math.PI) : Infinity;
+    d.r = p.teeth * 2e-3 / (2 * Math.PI); d.J = JROT;
+    d.Tpk0 = KDRV * KT * p.Iset; d.b_r = 2 * ZETA_R * Math.sqrt(NR * d.Tpk0 * d.J);
+    d.Mt = p.Mc + d.m_r + d.m_b; d.mh = d.m_r * d.l_r + d.m_b * p.L; d.Jp = d.J_r + d.m_b * p.L * p.L;
+    d.Meff = d.Mt + d.J / (d.r * d.r);
+    // motor-limit-derived firmware limits (recomputed whenever drive parameters change)
+    // rotor speed cap -> cart speed cap: the design cap (0.62 m/s at 20T, 24 V, 2.0 A) scaled with the speed at which
+    // pull-out torque halves (falls with lower V_bus / higher current setting), never above the design rotor speed
+    d.w_cliff = wCliff(p, d); d.v_max = W_CAP * Math.min(1, d.w_cliff / W_CLIFF0) * d.r;
+    d.a_max = Math.min(A_CAP, 0.65 * (d.Tpk0 / d.r) / d.Meff);      // 65 % of low-speed pull-out force
+    d.a_sw = Math.min(p.a_sw_cap, 0.9 * d.a_max);
+    var k0 = p.EA * (1 / (0 - XA) + 1 / (XB - 0)); d.c_b = 2 * ZETA_B * Math.sqrt(k0 * d.Meff);
+    return d;
+  }
+  function Iavail(w, p, d) {
+    var V = p.Vbus - 0.5, R = RPH + RDRV, X = Math.abs(w) * NR * LPH, E = KT * Math.abs(w);
+    if (E >= V) return 0; var a = R * R + X * X, b = 2 * R * E, c = E * E - V * V;
+    return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+  }
+  function wCliff(p, d) { // rotor speed where pull-out torque falls to 50 % of the low-speed value
+    var w = 1; while (w < 2000 && Math.min(p.Iset, Iavail(w, p, d)) > 0.5 * p.Iset) w += 1; return w;
+  }
+  // ---------- small dense linear algebra ----------
+  function zeros(n, m) { var A = []; for (var i = 0; i < n; i++) { A.push(new Array(m).fill(0)); } return A; }
+  function mul(A, B) { var n = A.length, m = B[0].length, k = B.length, C = zeros(n, m);
+    for (var i = 0; i < n; i++) for (var j = 0; j < m; j++) { var s = 0; for (var l = 0; l < k; l++) s += A[i][l] * B[l][j]; C[i][j] = s; } return C; }
+  function add(A, B, sb) { return A.map(function (r, i) { return r.map(function (v, j) { return v + (sb === undefined ? 1 : sb) * B[i][j]; }); }); }
+  function T(A) { return A[0].map(function (_, j) { return A.map(function (r) { return r[j]; }); }); }
+  function eye(n) { var I = zeros(n, n); for (var i = 0; i < n; i++) I[i][i] = 1; return I; }
+  function expm(M) { // scaling & squaring + 18-term Taylor
+    var nrm = 0; M.forEach(function (r) { nrm = Math.max(nrm, r.reduce(function (a, v) { return a + Math.abs(v); }, 0)); });
+    var s = Math.max(0, Math.ceil(Math.log2(nrm + 1e-12)) + 1), f = Math.pow(2, -s);
+    var A = M.map(function (r) { return r.map(function (v) { return v * f; }); }), E = eye(M.length), term = eye(M.length);
+    for (var k = 1; k <= 18; k++) { term = mul(term, A).map(function (r) { return r.map(function (v) { return v / k; }); }); E = add(E, term); }
+    for (var i = 0; i < s; i++) E = mul(E, E); return E;
+  }
+  // ---------- live LQR: linearise about upright, ZOH-discretise, delay-augment, iterate the Riccati recursion ----------
+  function designLQR(p, d) {
+    var A = zeros(4, 4), B = zeros(4, 1);
+    A[0][1] = 1; A[2][3] = 1; A[3][2] = d.mh * p.g / d.Jp; A[3][3] = -p.cp / d.Jp; B[1][0] = 1; B[3][0] = -d.mh / d.Jp;
+    var M = zeros(5, 5); for (var i = 0; i < 4; i++) { for (var j = 0; j < 4; j++) M[i][j] = A[i][j] * p.Ts; M[i][4] = B[i][0] * p.Ts; }
+    var E = expm(M), Aa = zeros(5, 5), Ba = zeros(5, 1);
+    for (i = 0; i < 4; i++) { for (j = 0; j < 4; j++) Aa[i][j] = E[i][j]; Aa[i][4] = E[i][4]; } Ba[4][0] = 1;
+    var sc = Math.pow(A_CAP / d.a_max, 2), R = RD * sc, Qa = zeros(5, 5);   // weaker drive -> softer gains
+    var QF = d.m_b < 0.1 ? [0.5, 300, 10, 0.1] : [1, 1, 1, 1]; if (d.m_b < 0.1) { R *= 0.1; } // light-arm weight set (= ESP32 2-entry table)
+    for (i = 0; i < 4; i++) Qa[i][i] = QD[i] * QF[i]; Qa[4][4] = R; var Ru = 1e-3 * R;
+    var X = Qa.map(function (r) { return r.slice(); }), K = null, it, AT = T(Aa), BT = T(Ba);
+    for (it = 0; it < 200000; it++) {           // Riccati recursion in the stabilised (Joseph) form:
+      // K = (Ru + B'XB)^-1 B'XA ;  X <- Q + K'Ru K + (A - BK)' X (A - BK)   (symmetrised each pass)
+      var BXB = mul(BT, mul(X, Ba))[0][0] + Ru, BXA = mul(BT, mul(X, Aa));
+      var Kn = BXA[0].map(function (v) { return v / BXB; });
+      var Acl = add(Aa, mul(Ba, [Kn]), -1), Xn = add(add(Qa, mul(T([Kn]), [Kn]).map(function (r) { return r.map(function (v) { return v * Ru; }); })), mul(T(Acl), mul(X, Acl)));
+      var dif = 0, mx = 0;
+      for (i = 0; i < 5; i++) for (j = 0; j < 5; j++) { var v = 0.5 * (Xn[i][j] + Xn[j][i]); dif = Math.max(dif, Math.abs(v - X[i][j])); mx = Math.max(mx, Math.abs(v)); }
+      for (i = 0; i < 5; i++) for (j = 0; j < 5; j++) Xn[i][j] = 0.5 * (Xn[i][j] + Xn[j][i]);
+      X = Xn; K = Kn; if (dif <= 1e-11 * mx && it > 50) break;
+    }
+    return { K: K, iters: it, R: R, Aa: Aa, X: X };
+  }
+  // ---------- simulation object ----------
+  function create(p) {
+    var S = { p: p || defaults() }; S.d = derived(S.p); S.lqr = designLQR(S.p, S.d); S.reset = reset; S.step = step;
+    S.retune = function () { S.d = derived(S.p); if (S.d.m_b <= 0) { S.s[4] = S.s[2]; S.s[5] = S.s[3]; } S.lqr = designLQR(S.p, S.d); S.Iav = {}; };
+    S.push = function (dir) { S.pushT = 0.05; S.pushF = (dir || 1) * S.p.push_Ns / 0.05; };
+    reset.call(S, "swing"); return S;
+  }
+  function wrap(a) { return a - 2 * Math.PI * Math.floor((a + Math.PI) / (2 * Math.PI)); }
+  function reset(start, th0) {
+    var S = this, d = S.d, p = S.p;
+    var th = start === "swing" ? Math.PI + p.pert : (th0 === undefined ? 0.05 : th0);
+    S.s = [0, 0, th, 0, th + (d.m_b > 0 ? d.m_b * p.g * p.L * Math.sin(th) / d.kappa : 0), 0, 0, 0];
+    S.start = start; S.mode = start === "swing" ? "SWING-UP" : "BALANCE"; S.t = 0; S.tick = 0; S.t_up = null;
+    S.xh = 0; S.vh = 0; S.agen = 0; S.queue = [0]; S.aapp = 0; S.th_prev = null; S.th_un = th; S.thd_f = 0; S.ith = 0;
+    S.phic = 0; S.lost = 0; S.reswings = 0; S.load = 0; S.maxload = 0; S.Fb = 0; S.tau = 0; S.Isup = 0; S.pushT = 0; S.pushF = 0;
+    S.trip = false; S.msg = ""; S.Iav = {}; S.peakx = 0; S.seed = 12345; S.E = 0;
+  }
+  function rnd(S) { // deterministic gaussian (Box-Muller on an LCG) so headless tests are repeatable
+    S.seed = (S.seed * 1103515245 + 12345) % 2147483648; var u1 = (S.seed + 1) / 2147483649;
+    S.seed = (S.seed * 1103515245 + 12345) % 2147483648; var u2 = S.seed / 2147483648;
+    return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  }
+  function Tpk(S, w) { var key = Math.floor(Math.abs(w) * 4), v = S.Iav[key];
+    if (v === undefined) { v = KDRV * KT * Math.min(S.p.Iset, Iavail(key / 4, S.p, S.d)); S.Iav[key] = v; } return v; }
+  function deriv(S, s, out) {
+    var p = S.p, d = S.d, x = s[0], xd = s[1], th = s[2], thd = s[3], ps = s[4], psd = s[5], ph = s[6], phd = s[7];
+    var r = d.r, gh = p.backlash / 2, rel = r * ph - x;
+    var k = p.EA * (1 / Math.max(x - XA, 0.02) + 1 / Math.max(XB - x, 0.02)), Fb = 0;
+    if (rel > gh) Fb = k * (rel - gh) + d.c_b * (r * phd - xd); else if (rel < -gh) Fb = k * (rel + gh) + d.c_b * (r * phd - xd);
+    var Fstop = 0, ov = Math.abs(x) - p.x_hard;                    // foam + hard stop at the rail ends
+    if (ov > 0) Fstop = -Math.sign(x) * (2e4 * ov) - (x * xd > 0 ? 60 * xd : 0);
+    var Fd = S.pushT > 0 ? S.pushF : 0;                            // horizontal push at the bob (or rod tip if bare)
+    var Qx = Fb + Fstop + Fd - p.Fc * Math.tanh(xd / 0.005) - p.bc * xd;
+    var Qth = -p.cp * thd - p.Cp * Math.tanh(thd / 0.01) + d.c_s * (psd - thd) + d.kappa * (ps - th) + d.m_r * p.g * d.l_r * Math.sin(th);
+    var Qps = -d.c_s * (psd - thd) - d.kappa * (ps - th) + d.m_b * p.g * p.L * Math.sin(ps), xdd, thdd, psdd;
+    var a_ = d.m_r * d.l_r * Math.cos(th), b_ = d.m_b * p.L * Math.cos(ps), Jb = d.m_b * p.L * p.L, J_r = d.J_r;
+    var rx = Qx + d.m_r * d.l_r * Math.sin(th) * thd * thd + d.m_b * p.L * Math.sin(ps) * psd * psd;
+    if (Jb > 0) {
+      Qps += Fd * p.L * Math.cos(ps);
+      var den = d.Mt - a_ * a_ / J_r - b_ * b_ / Jb; xdd = (rx - a_ * Qth / J_r - b_ * Qps / Jb) / den;
+      thdd = (Qth - a_ * xdd) / J_r; psdd = (Qps - b_ * xdd) / Jb;
+    } else {
+      Qth -= d.c_s * (psd - thd) + d.kappa * (ps - th);   // bare arm: no bob, no bending spring (psi slaved to theta)
+      Qth += Fd * (p.L + 0.02) * Math.cos(th);
+      var den0 = d.Mt - a_ * a_ / J_r; xdd = (rx - a_ * Qth / J_r) / den0; thdd = (Qth - a_ * xdd) / J_r; psdd = thdd;
+    }
+    var tau = -Tpk(S, phd) * Math.sin(NR * (ph - S.phic));
+    var phdd = (tau - r * Fb - d.b_r * (phd - S.wc) - BV * phd - TDET * Math.sin(4 * NR * ph)) / d.J;
+    out[0] = xd; out[1] = xdd; out[2] = thd; out[3] = thdd; out[4] = psd; out[5] = psdd; out[6] = phd; out[7] = phdd;
+    S._Fb = Fb; S._tau = tau;
+  }
+  var k1 = new Array(8), k2 = new Array(8), k3 = new Array(8), k4 = new Array(8), tmp = new Array(8);
+  function firmware(S) {
+    var p = S.p, d = S.d, q = 2 * Math.PI / 4096, off = p.offset_deg * Math.PI / 180;
+    var raw = wrap(S.s[2] + off + rnd(S) * p.sigma_deg * Math.PI / 180);
+    var thm = wrap(Math.round(raw / q) * q);                     // AS5600 12-bit absolute
+    if (S.th_prev === null) S.th_prev = thm;
+    var thd_raw = wrap(thm - S.th_prev) / p.Ts; S.th_prev = thm;
+    var fc = Math.min(p.fc_th, Math.max(10, d.f_bend)); // LPF corner kept at/below the rod bending mode
+    S.thd_f += (1 - Math.exp(-2 * Math.PI * fc * p.Ts)) * (thd_raw - S.thd_f);
+    var u = 0, amax = d.a_max;
+    S.E = 0.5 * d.Jp * S.thd_f * S.thd_f + d.mh * p.g * (Math.cos(thm) - 1);
+    if (S.mode === "SWING-UP" && Math.abs(thm) < p.thsw && Math.abs(S.thd_f) < p.wsw) { S.mode = "BALANCE"; if (S.t_up === null) S.t_up = S.t; S.ith = 0; }
+    else if (S.mode === "BALANCE" && Math.abs(thm) > 0.5) {
+      if (S.start === "swing" && S.reswings < 3) { S.mode = "SWING-UP"; S.reswings++; }
+      else { S.mode = "STOP"; S.msg = "pendulum fell (|θ| > 0.5 rad)"; }
+    }
+    var xl = S.mode === "SWING-UP" ? p.xlim_sw : p.xlim;   // firmware soft limit: ±0.15 m in SWING-UP, ±0.22 m in BALANCE (SWINGUP_REDESIGN)
+    if (S.mode !== "STOP" && Math.abs(S.xh) >= xl) { S.mode = "STOP"; S.trip = true; S.msg = "soft limit ±" + xl + " m tripped (" + (xl === p.xlim_sw ? "SWING-UP" : "BALANCE") + ")"; }
+    if (S.mode === "SWING-UP") {
+      var En = S.E / (2 * d.mh * p.g), sg = Math.tanh(Math.sin(thm) / p.eps_sw);
+      if (Math.abs(sg) < 0.05 && En < -0.98) sg = 1;
+      var vref = -p.Vsw * Math.max(-1, Math.min(1, p.ke * (p.Eref - En))) * sg - p.kxs * S.xh;
+      u = p.kvs * (vref - S.vh); amax = d.a_sw;
+    } else if (S.mode === "BALANCE") {
+      var K = S.lqr.K;
+      if (p.ctrl === "auto") u = -(K[0] * S.xh + K[1] * S.vh + K[2] * thm + K[3] * S.thd_f + K[4] * S.queue[0]);
+      else { var m = p.man; S.ith = Math.max(-0.5, Math.min(0.5, S.ith + thm * p.Ts));
+        u = -(m.kx * S.xh + m.kv * S.vh + m.kth * thm + m.kthd * S.thd_f + m.ki * S.ith); }
+    } else { u = -Math.sign(S.vh) * Math.min(d.a_sw, Math.abs(S.vh) / p.Ts); amax = d.a_sw; }   // controlled stop, then hold
+    var ua = Math.max(-amax, Math.min(amax, u)); S.queue.push(ua); S.aapp = S.queue.shift(); S.thm = thm;
+  }
+  function step(nsub) {   // advance nsub plant steps of DT = 1e-4 s
+    var S = this, p = S.p, d = S.d, DT = 1e-4, nfw = Math.round(p.Ts / DT), dphi = 2 * Math.PI / (200 * p.usteps), js = J_MAX * DT;
+    for (var n = 0; n < nsub; n++) {
+      if (S.tick % nfw === 0) firmware(S);
+      S.tick++;
+      S.agen += Math.max(-js, Math.min(js, S.aapp - S.agen)); var an = S.agen;
+      if ((S.vh >= d.v_max && an > 0) || (S.vh <= -d.v_max && an < 0)) an = 0;
+      S.vh += an * DT; S.xh += S.vh * DT; S.phic = Math.round(S.xh / d.r / dphi) * dphi; S.wc = S.vh / d.r;
+      var s = S.s, i;
+      deriv(S, s, k1); var Fb = S._Fb, tau = S._tau;
+      for (i = 0; i < 8; i++) tmp[i] = s[i] + DT / 2 * k1[i]; deriv(S, tmp, k2);
+      for (i = 0; i < 8; i++) tmp[i] = s[i] + DT / 2 * k2[i]; deriv(S, tmp, k3);
+      for (i = 0; i < 8; i++) tmp[i] = s[i] + DT * k3[i]; deriv(S, tmp, k4);
+      for (i = 0; i < 8; i++) s[i] += DT / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+      if (S.pushT > 0) S.pushT -= DT;
+      var la = NR * (s[6] - S.phic), teeth = Math.round(la / (2 * Math.PI));      // rotor slipped by whole teeth = lost steps
+      var lw = la - 2 * Math.PI * teeth; S.load = Math.abs(Math.sin(Math.min(Math.abs(lw), Math.PI / 2)));
+      if (Math.abs(lw) > Math.PI / 2) S.load = 1;
+      S.lostSteps = Math.abs(teeth) * 4; S.maxload = Math.max(S.maxload, S.load);
+      S.Fb = Fb; S.tau = tau; S.Isup = (tau * s[7] + p.Iset * p.Iset * (RPH + RDRV) + 0.3) / p.Vbus;
+      S.peakx = Math.max(S.peakx, Math.abs(s[0])); S.t += DT;
+      if (!isFinite(s[0] + s[1] + s[2] + s[3] + s[6] + s[7])) { S.mode = "STOP"; S.msg = "numerical divergence"; S.diverged = true; break; }
+    }
+    S.Etrue = 0.5 * d.Jp * S.s[3] * S.s[3] + d.mh * p.g * (Math.cos(S.s[2]) - 1);
+  }
+  return { defaults: defaults, derived: derived, designLQR: designLQR, create: create, wrap: wrap, Iavail: Iavail };
+})();
+if (typeof module !== "undefined") module.exports = LCPE;
+
+</script>
+<script>window.LCPE_SWING_MAX=1.20;window.LCPE_SWING_MIN=0.10;window.LCPE_SWING_MARGINAL=0.70;</script>
+<script id="ui">
+// ===== UI (DOM only; all physics/firmware lives in the core script above) =====
+(function () {
+  "use strict";
+  var p = LCPE.defaults(), S = LCPE.create(p), paused = false, speed = 1, hist = [];
+  var SW_MAX = window.LCPE_SWING_MAX || null, SW_MIN = window.LCPE_SWING_MIN || 0, SW_MARG = window.LCPE_SWING_MARGINAL || null;   // filled in by the build from the headless sweep
+  var SL = [ // id, label, min, max, step, get, set, fmt, unit, group
+    ["mb", "Bob / tip mass (0 = bare arm)", 0, 1.25, 0.01, "kg"], ["L", "Pivot → bob length L", 0.20, 0.45, 0.005, "m"],
+    ["Mc", "Cart mass (motor+electronics)", 0.4, 1.5, 0.01, "kg"], ["g", "Gravity g", 1.6, 15, 0.01, "m/s²"],
+    ["Fc", "Cart Coulomb friction", 0, 6, 0.05, "N"], ["bc", "Cart viscous friction", 0, 3, 0.05, "N·s/m"],
+    ["cp", "Pivot viscous friction", 0, 0.02, 0.0005, "N·m·s"], ["Cp", "Pivot Coulomb friction", 0, 0.008, 0.0002, "N·m"],
+    ["teeth", "Pulley teeth (GT2, belt ratio)", 16, 40, 1, "T"], ["Iset", "DRV8825 current setting", 0.5, 2.2, 0.05, "A"],
+    ["Vbus", "Supply voltage", 12, 24, 0.5, "V"], ["EA", "Belt stiffness EA", 2000, 30000, 500, "N"],
+    ["backlash", "Mesh backlash (total)", 0, 0.5e-3, 0.01e-3, "m"], ["sigma_deg", "AS5600 noise σ", 0, 0.2, 0.005, "°"],
+    ["push_Ns", "Push impulse at bob", 0.02, 0.3, 0.01, "N·s"]];
+  var MAN = [["kth", "K_θ", -400, 0, 1], ["kthd", "K_θ̇", -60, 0, 0.1], ["kx", "K_x", -80, 0, 0.1], ["kv", "K_v", -60, 0, 0.1], ["ki", "K_i (∫θ)", -200, 0, 1]];
+  function $(id) { return document.getElementById(id); }
+  function fmt(v, st) { var dp = st >= 1 ? 0 : Math.max(0, Math.ceil(-Math.log10(st))); return (+v).toFixed(dp); }
+  function build() {
+    var h = "";
+    SL.forEach(function (s) { var v = p[s[0]], sh = s[0] === "backlash" ? 1e3 : 1;
+      h += '<div class="sl"><label>' + s[1] + ' <b id="v_' + s[0] + '"></b></label><input type="range" id="s_' + s[0] + '" min="' + s[2] + '" max="' + s[3] + '" step="' + s[4] + '" value="' + v + '"></div>'; });
+    $("sliders").innerHTML = h; h = "";
+    MAN.forEach(function (s) { h += '<div class="sl"><label>' + s[1] + ' <b id="v_m' + s[0] + '"></b></label><input type="range" id="s_m' + s[0] + '" min="' + s[2] + '" max="' + s[3] + '" step="' + s[4] + '" value="' + p.man[s[0]] + '"></div>'; });
+    $("mansl").innerHTML = h;
+    SL.forEach(function (s) { $("s_" + s[0]).addEventListener("input", function (e) { p[s[0]] = +e.target.value; S.retune(); label(); }); });
+    MAN.forEach(function (s) { $("s_m" + s[0]).addEventListener("input", function (e) { p.man[s[0]] = +e.target.value; label(); }); });
+    $("ctrl").addEventListener("change", function (e) { p.ctrl = e.target.value; $("manbox").style.display = p.ctrl === "manual" ? "block" : "none";
+      if (p.ctrl === "manual") { var K = S.lqr.K; ["kx", "kv", "kth", "kthd"].forEach(function (k, i) { p.man[k] = +K[i].toFixed(2); $("s_m" + k).value = p.man[k]; }); } label(); });
+    $("b_swing").onclick = function () { S.reset("swing"); hist = []; };
+    $("b_up").onclick = function () { S.reset("upright", +$("th0").value); hist = []; };
+    $("b_reset").onclick = function () { p = LCPE.defaults(); S.p = p; S.retune(); S.reset("swing"); hist = []; build(); };
+    $("b_pl").onclick = function () { S.push(-1); }; $("b_pr").onclick = function () { S.push(1); };
+    $("b_pause").onclick = function () { paused = !paused; this.textContent = paused ? "Run" : "Pause"; };
+    $("spd").addEventListener("change", function (e) { speed = +e.target.value; });
+    label();
+  }
+  function label() {
+    SL.forEach(function (s) { var v = p[s[0]]; $("v_" + s[0]).textContent = (s[0] === "backlash" ? (v * 1e3).toFixed(2) + " mm" : fmt(v, s[4]) + " " + s[5]); });
+    MAN.forEach(function (s) { $("v_m" + s[0]).textContent = fmt(p.man[s[0]], s[4]); });
+    var K = S.lqr.K, d = S.d;
+    $("kinfo").innerHTML = "auto-LQR K = [" + K.map(function (v) { return v.toFixed(2); }).join(", ") + "] (" + S.lqr.iters + " Riccati iterations)<br>" +
+      "a_max " + d.a_max.toFixed(2) + " m/s², v_max " + d.v_max.toFixed(3) + " m/s, pull-out force " + (d.Tpk0 / d.r).toFixed(1) + " N, m_h " + d.mh.toFixed(4) + " kg·m, J_p " + d.Jp.toFixed(4) + " kg·m², rod " + (d.m_r * 1000).toFixed(0) + " g";
+    var cap = $("cap");
+    if (SW_MAX !== null && isDefaultDrive() && (p.mb > SW_MAX + 1e-9 || p.mb < SW_MIN - 1e-9)) { cap.className = "warn"; cap.textContent = "SWING-UP OUTSIDE CAPABILITY for " + p.mb.toFixed(2) + " kg (headless sweep: swing-up passes only for " + SW_MIN.toFixed(2) + "–" + SW_MAX.toFixed(2) + " kg at the default drive; below: energy pump stalls on the light arm, above: motor step loss). Use 'Start upright (hand release)': balance still works."; }
+    else if (SW_MARG !== null && isDefaultDrive() && p.mb > SW_MARG + 1e-9) { cap.className = "note"; cap.textContent = "Swing-up passes in the sim for " + p.mb.toFixed(2) + " kg but with thin margin (load-angle use > 0.8 above " + SW_MARG.toFixed(2) + " kg). Hand release is safer on hardware."; }
+    else if (SW_MAX !== null && !isDefaultDrive()) { cap.className = "note"; cap.textContent = "Drive/geometry changed from the design: the swing-up limit (" + SW_MAX.toFixed(2) + " kg at default) is not re-verified; watch torque use and lost steps."; }
+    else { cap.className = "ok"; cap.textContent = "Swing-up within the verified range (" + SW_MIN.toFixed(2) + "–" + (SW_MAX === null ? "?" : SW_MAX.toFixed(2)) + " kg at the default drive)."; }
+  }
+  function isDefaultDrive() { var q = LCPE.defaults(); return ["L", "Mc", "g", "teeth", "Iset", "Vbus", "Fc", "bc", "cp", "Cp", "EA", "backlash"].every(function (k) { return Math.abs(p[k] - q[k]) < 1e-12; }); }
+  var cv, cx, pt, px;
+  function draw() {
+    var W = cv.width, H = cv.height, sc = Math.min(W / 0.80, H * 0.46 / (p.L + 0.04)), ox = W / 2, oy = H * 0.5, s = S.s, d = S.d;
+    cx.fillStyle = "#070b10"; cx.fillRect(0, 0, W, H);
+    cx.strokeStyle = "#3a4f66"; cx.lineWidth = 4; cx.beginPath(); cx.moveTo(ox - 0.335 * sc, oy); cx.lineTo(ox + 0.335 * sc, oy); cx.stroke();
+    [[-p.xlim, "#c9a227"], [p.xlim, "#c9a227"], [-p.x_hard, "#d9534f"], [p.x_hard, "#d9534f"]].forEach(function (m) { cx.fillStyle = m[1]; cx.fillRect(ox + m[0] * sc - 1, oy - 12, 2, 24); });
+    var cxp = ox + s[0] * sc; cx.fillStyle = "#1f6f8b"; cx.fillRect(cxp - 0.05 * sc, oy - 14, 0.10 * sc, 28);
+    cx.fillStyle = "#555"; cx.fillRect(cxp - 0.021 * sc, oy + 14, 0.042 * sc, 0.042 * sc);
+    var Lp = p.L, bx = cxp + Math.sin(s[4]) * Lp * sc, by = oy - Math.cos(s[4]) * Lp * sc;
+    var tx = cxp + Math.sin(s[2]) * (Lp + 0.02) * sc, ty = oy - Math.cos(s[2]) * (Lp + 0.02) * sc;
+    cx.strokeStyle = "#c8d3dd"; cx.lineWidth = 3; cx.beginPath(); cx.moveTo(cxp, oy); cx.lineTo(d.m_b > 0 ? bx : tx, d.m_b > 0 ? by : ty); cx.stroke();
+    if (d.m_b > 0) { var rr = 6 + 14 * Math.cbrt(d.m_b / 1.25); cx.fillStyle = "#e8a33d"; cx.beginPath(); cx.arc(bx, by, rr, 0, 7); cx.fill(); }
+    cx.fillStyle = "#fff"; cx.beginPath(); cx.arc(cxp, oy, 4, 0, 7); cx.fill();
+    if (S.pushT > 0) { cx.fillStyle = "#ff5"; cx.font = "bold 18px sans-serif"; cx.fillText(S.pushF > 0 ? "→ push" : "push ←", bx - 30, by - 22); }
+    cx.fillStyle = S.mode === "BALANCE" ? "#5cd65c" : S.mode === "SWING-UP" ? "#38d6f5" : "#ff6b6b"; cx.font = "bold 16px sans-serif";
+    cx.fillText(S.mode + (S.msg ? " — " + S.msg : ""), 12, 22);
+    // plots
+    [[pt, 3, 0.6, "θ (rad, truth)", function (h) { return h[1]; }], [px, 3, 0.26, "x (m, truth)", function (h) { return h[2]; }]].forEach(function (P) {
+      var c = P[0].getContext("2d"), w = P[0].width, hh = P[0].height; c.fillStyle = "#0b1118"; c.fillRect(0, 0, w, hh);
+      c.strokeStyle = "#233"; c.beginPath(); c.moveTo(0, hh / 2); c.lineTo(w, hh / 2); c.stroke(); c.fillStyle = "#8aa"; c.fillText(P[3] + "  ±" + P[2], 6, 12);
+      c.strokeStyle = "#38d6f5"; c.beginPath(); hist.forEach(function (h, i) { var X = i / 600 * w, Y = hh / 2 - P[4](h) / P[2] * hh / 2; i ? c.lineTo(X, Y) : c.moveTo(X, Y); }); c.stroke();
+    });
+    var thd = LCPE.wrap(s[2]);
+    $("ro").innerHTML = row("Mode", S.mode + (S.t_up !== null ? " (upright at " + S.t_up.toFixed(2) + " s)" : "")) + row("Time", S.t.toFixed(2) + " s") +
+      row("Angle θ (truth / AS5600)", thd.toFixed(4) + " / " + (S.thm || 0).toFixed(4) + " rad (" + (thd * 180 / Math.PI).toFixed(1) + "°)") +
+      row("Cart x (truth / step count)", s[0].toFixed(4) + " / " + S.xh.toFixed(4) + " m (peak " + S.peakx.toFixed(3) + ")") +
+      row("Cart speed", s[1].toFixed(3) + " m/s (cap " + d.v_max.toFixed(2) + ")") +
+      row("Motor torque", S.tau.toFixed(3) + " N·m of " + (LCPE.Iavail(s[7], p, d) > 0 ? (0.85 * 0.1664 * Math.min(p.Iset, LCPE.Iavail(s[7], p, d))).toFixed(3) : "0") + " available") +
+      row("Torque use (load-angle sin)", (S.load * 100).toFixed(0) + " % (peak " + (S.maxload * 100).toFixed(0) + " %; 100 % = missed steps)") +
+      row("Lost steps", S.lostSteps || 0) + row("Belt force", S.Fb.toFixed(1) + " N") +
+      row("Phase current / supply", p.Iset.toFixed(2) + " A (chopper) / " + S.Isup.toFixed(2) + " A") +
+      row("Energy E (firmware / truth)", S.E.toFixed(3) + " / " + S.Etrue.toFixed(3) + " J (upright 0, hanging " + (-2 * d.mh * p.g).toFixed(3) + ")") +
+      row("Re-swings", S.reswings);
+    $("bar").style.width = (S.load * 100).toFixed(0) + "%"; $("bar").style.background = S.load > 0.85 ? "#d9534f" : S.load > 0.7 ? "#c9a227" : "#5cd65c";
+  }
+  function row(a, b) { return "<tr><td>" + a + "</td><td>" + b + "</td></tr>"; }
+  var last = null;
+  function frame(ts) {
+    if (last === null) last = ts; var dt = Math.min(0.05, (ts - last) / 1000); last = ts;
+    if (!paused) { S.step(Math.max(1, Math.round(dt * speed / 1e-4)));
+      hist.push([S.t, LCPE.wrap(S.s[2]), S.s[0]]); if (hist.length > 600) hist.shift(); }
+    draw(); requestAnimationFrame(frame);
+  }
+  window.addEventListener("load", function () {
+    cv = $("scene"); cx = cv.getContext("2d"); pt = $("pth"); px = $("px"); build(); requestAnimationFrame(frame);
+  });
+})();
+
+</script>
+</body></html>
