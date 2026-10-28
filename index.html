@@ -1,18 +1,32 @@
 <!DOCTYPE html>
 <!--
 =====================================================================================================================
- L.C.P.E. — inverted pendulum, MOTOR ON THE CART, live auto-LQR (rebuilt 27 Oct 2026; old file: *_pre_autolqr.html)
+ L.C.P.E. — inverted pendulum, MOTOR ON THE CART, live auto-LQR (flat circular bob, CAD-MEASURED 28 Oct 2026)
  Self-contained: inline JS/CSS, no CDN. Core = htmlsim/autolqr/core.js (embedded verbatim), mirrors sim/stepper_cart_sim.py.
  17HS4401 + DRV8825 (2.0 A, 1/16), 24 V, GT2 20T omega belt, Ø8 rails, AS5600, ESP32 @ 200 Hz. SI units, θ = 0 upright.
 =====================================================================================================================
  STATES s = [x, ẋ, θ, θ̇, ψ, ψ̇, φ, φ̇]: cart, rod hub angle θ, bob angle ψ (flexible Ø8 rod), rotor angle φ (motor on cart).
- MASS: rod m_r = ρπd²/4·(L+0.03), l_r = (L+0.03)/2 − 0.01, J_r = m_r l_r² + m_r (L+0.03)²/12 ; bob m_b at L (m_b = 0 allowed:
+ MASS: rod m_r = ρπd²/4·(L+0.03), l_r = (L+0.03)/2 − 0.01, J_r = m_r l_r² + m_r (L+0.03)²/12 ; bob m_b (m_b = 0 allowed:
        bare arm, ψ slaved to θ). Rod bending: κ = 3EI/L_f·(L/L_f)², L_f = L − 0.02, damping ζ_s = 0.01.
+FLAT BOB (ALIGNED 28 Oct 2026 — CAD-MEASURED, FINAL_NUMBERS.md): Ø120 mm PETG plate, 10 mm working thickness,
+       4 mm high x 4 mm wide raised rim, Ø62 x 18 pocket + cap under it holding 2x 100 g cast-iron discs.
+       MASS = V_CAD x ρ at 100 % infill, because the CAD deck is a single-shell solid (1 SHELL, no enclosed void):
+       its rib channels and pocket are open to air, so no slicer fill enters them at any infill setting. Printing the
+       modelled part fully solid reproduces exactly the modelled volume.
+       Measured from cad/parts/bob_deck.step (63.9326 cm³) + bob_pocket_cap.step (5.9273 cm³) = 69.8599 cm³.
+         ρ PETG 1.27 -> printed 88.72 g | bob 288.99 g | s_b 0.28956 m | J_own 1.3987e-4 | J_b 2.4370e-2 kg·m²
+         ρ PLA  1.24 -> printed 86.63 g | bob 286.90 g        ρ Al 2.70 -> printed 188.62 g | bob 388.89 g
+       PETG is the DESIGN case: the heaviest credible print, so the worst case for the dynamics. Aluminium is not a
+       print and would change the plant mass, so it needs the gains re-scheduled — it is a documented robustness case.
+       A payload rests on the flat top: point mass at L (default, conservative on inertia) or an extended disc with its
+       own inertia (payloadExt). Legacy lumped bob (point mass at L, J = m L²) is still selectable as bob = "legacy".
  EXACT COUPLED DYNAMICS (Lagrange, solved each RK4 stage):
    M_t ẍ + m_r l_r cosθ θ̈ + m_b L cosψ ψ̈ = Q_x + m_r l_r sinθ θ̇² + m_b L sinψ ψ̇²
    J_r θ̈ + m_r l_r cosθ ẍ = m_r g l_r sinθ + κ(ψ−θ) + c_s(ψ̇−θ̇) − c_p θ̇ − C_p tanh(θ̇/0.01)
    m_b L² ψ̈ + m_b L cosψ ẍ = m_b g L sinψ − κ(ψ−θ) − c_s(ψ̇−θ̇) + F_push L cosψ
    Q_x = F_belt + F_stop + F_push − F_c tanh(ẋ/0.005) − b_c ẋ
+   F_stop = −sgn(x)·2e4·(|x|−0.255) − 60ẋ (moving outward) only beyond the ±0.255 m foam stops; bare arm (m_b = 0): push acts at the rod tip,
+   adding F_push (L+0.02) cosθ to the θ equation. F_push on the flat bob acts at its CoM (s_b). Integration: RK4, dt = 1e-4 s (re-verified: energy drift < 1e-9 J frictionless, SIM_REVERIFY.md).
  BELT: δ = rφ − x, k(x) = EA(1/(x−x_A) + 1/(x_B−x)), x_A,B = ∓0.32 m, backlash dead-band ±h, F = k(δ∓h) + c_b δ̇.
  STEPPER (hybrid, load-angle model): J φ̈ = τ − rF_belt − b_r(φ̇ − ω_cmd) − b_v φ̇ − T_det sin(4N_rφ)
    τ = −T_pk(φ̇) sin(N_r(φ − φ_cmd)), T_pk = 0.85 K_t min(I_set, I_avail(ω)) from V² = (IR + K_tω)² + (I N_r ω L_ph)².
@@ -20,11 +34,12 @@
  FIRMWARE: AS5600 12-bit + noise + offset; θ̇ by difference + 1st-order LPF, corner = min(30 Hz, max(10 Hz, f_bend));
    1-sample delay; accel command u → jerk-limited (879 m/s³), v-capped step generator (φ_cmd quantised to 1/16 step).
  AUTO-LQR (re-solved on every slider change): linearise about upright with accel input
-   A: ẍ = u, θ̈ = (m_h g θ − c_p θ̇ − m_h u)/J_p ; ZOH via expm, augment one-sample delay, iterate the discrete Riccati
+   A: ẍ = u, θ̈ = (m_h g θ − c_p θ̇ − m_h u)/J_p , m_h = m_r l_r + m_b s_b, J_p = J_r + J_b ; ZOH via expm, augment one-sample delay, iterate the discrete Riccati
    recursion (Joseph form) to convergence ⇒ K (5 gains). Q = (427.4, 0.111, 117.3, 0.339), R = 1.626·(8.65/a_max)²;
-   light-arm set (m_b < 0.1 kg): Q × (0.5, 300, 10, 0.1), R × 0.1 (same as the ESP32 2-entry table, PAYLOAD_RANGE.md).
+   light-arm set (total tip mass m_b < 0.1 kg): Q × (0.5, 300, 10, 0.1), R × 0.1 (same as the ESP32 2-entry table, PAYLOAD_RANGE.md).
    a_max = min(8.65, 0.65 T_pk0/(r M_eff)), v_max scaled with the pull-out-torque cliff speed. Manual-gain mode available.
- SWING-UP: E = ½J_p θ̇² + m_h g(cosθ − 1); v_ref = −V sat(k_e(E_ref − E_n)) tanh(sinθ/ε) − k_xs x̂ ; catch |θ|<0.32, |θ̇|<5.7.
+ SWING-UP: E = ½J_p θ̇² + m_h g(cosθ − 1); v_ref = −V sat(k_e(E_ref − E_n)) tanh(sinθ/ε) − k_xs x̂ ; catch |θ|<0.32, |θ̇|<5.7;
+   a fall after the catch re-starts swing-up (max 3 times), then STOP (controlled stop of the step generator).
  HONESTY: RK4 dt = 1e-4 s, no clamps on the plant. Falls (|θ|>0.5) and soft-limit trips (±0.15 m in SWING-UP, ±0.22 m in BALANCE) stop the run.
  Headless results: htmlsim/autolqr/test_results_autolqr.txt (node test_harness.js).
 =====================================================================================================================
@@ -55,11 +70,102 @@ var LCPE = (function () {
   "use strict";
   var NR = 50, KT = 0.40 / (Math.SQRT2 * 1.7), JROT = 54e-7 + 6e-7, KDRV = 0.85, RPH = 1.5, RDRV = 0.4, LPH = 2.8e-3;
   var TDET = 0.038, BV = 5e-5, ZETA_R = 0.05, ZETA_B = 0.03, ZETA_S = 0.01, XA = -0.32, XB = 0.32;
+  // ---------- FLAT CIRCULAR BOB: CAD-MEASURED (ALIGN 28 Oct 2026) ----------
+  // The thin-lamina + 40 %-infill model below is KEPT as a historical cross-check (flatBobInfill) but is
+  // NO LONGER the plant. The CAD deck is a single-shell solid -- 1 SHELL, no enclosed void -- so its rib
+  // channels and pocket are open to air and no slicer fill enters them. Print mass is V_CAD x rho.
+  // Measured from cad/parts/bob_deck.step + bob_pocket_cap.step (see classical_redesign/align/).
+  // ---- CAD-measured bob. Keep in step with sim/flat_bob.py CAD_BOB / cad_bob_props().
+  var CAD_BOB = {
+    V_deck_cm3: 63.932561, V_cap_cm3: 5.927306,
+    z_deck_mm: 1.254041, z_cap_mm: 22.000000,
+    Iyy_deck_mm4_per_vol: 1136.542157, Iyy_cap_mm4_per_vol: 244.993333,
+    n_discs: 2, disc_m: 0.100, disc_d: 0.050, disc_bore: 0.012, disc_t: 0.007279,
+    z_disc0_mm: 6.442, washer_m: 0.00027, washer_od: 0.0138, washer_id: 0.0110, z_washer_mm: 21.000,
+    rho_design: 1.27, L_mount: 0.300
+  };
+  function cadBob(rho) {
+    var c = CAD_BOB, k; rho = (rho === undefined || rho === null) ? c.rho_design : rho;
+    var vp = c.V_deck_cm3 + c.V_cap_cm3, mp = vp * rho / 1000.0, rows = [];
+    function add(n, m, z, k2) { rows.push({ n: n, m: m, z_mm: z, k2_mm2: k2, s_mm: c.L_mount * 1000.0 - z }); }
+    add("deck", mp * c.V_deck_cm3 / vp, c.z_deck_mm, c.Iyy_deck_mm4_per_vol);
+    add("cap", mp * c.V_cap_cm3 / vp, c.z_cap_mm, c.Iyy_cap_mm4_per_vol);
+    for (var i = 0; i < c.n_discs; i++) {
+      add("disc_" + i, c.disc_m, c.z_disc0_mm + (i + 0.5) * c.disc_t * 1000.0,
+        (Math.pow(c.disc_d / 2, 2) + Math.pow(c.disc_bore / 2, 2)) / 4.0 * 1e6);
+    }
+    add("washer", c.washer_m, c.z_washer_mm,
+      (Math.pow(c.washer_od / 2, 2) + Math.pow(c.washer_id / 2, 2)) / 4.0 * 1e6);
+    var m = 0, ms = 0, i;
+    for (i = 0; i < rows.length; i++) { m += rows[i].m; ms += rows[i].m * rows[i].s_mm; }
+    var scmm = ms / m, Jo = 0, Jp = 0;
+    for (i = 0; i < rows.length; i++) {
+      Jo += rows[i].m * (rows[i].k2_mm2 + Math.pow(rows[i].s_mm - scmm, 2));
+      Jp += rows[i].m * (Math.pow(rows[i].s_mm, 2) + rows[i].k2_mm2);
+    }
+    return { m_bob: m, m_discs: c.n_discs * c.disc_m, m_plate: m - c.n_discs * c.disc_m - c.washer_m,
+      s_com: scmm / 1000.0, J_own: Jo * 1e-6, J_pivot: Jp * 1e-6, rows: rows,
+      s_surf: c.L_mount + 0.005, L: c.L_mount };
+  }
+  var FBD = { D: 0.120, thickness: 0.010, rim_h: 0.004, rim_w: 0.004, skin_t: 0.0016, rim_ring_w: 0.006,
+    pocket_d: 0.062, collar_h: 0.018, collar_wall: 0.003, cap_t: 0.002, bore_d: 0.0084, boss_d: 0.022,
+    boss_h: 0.006, clamp_m: 0.003, plate_k: 0.25, infill: 0.40, rho: 1270, t_shell: 0.001,
+    n_discs: 2, disc_m: 0.100, disc_d: 0.050, rho_disc: 7200, L: 0.300, L_mount: 0.300 };
+  function printMass(V, A, inf, ts) { var sh = Math.min(V, A * ts); return FBD.rho * (sh + inf * (V - sh)); }
+  function flatBob(fb) {
+    var f = {}, k; for (k in FBD) f[k] = FBD[k]; for (k in (fb || {})) f[k] = fb[k];
+    var pk = f.plate_k, R = f.D / 2, Ri = R - f.rim_w, Rr = R - f.rim_ring_w, rp = f.pocket_d / 2,
+      rb = f.bore_d / 2, rbo = f.boss_d / 2, L = f.L, t = f.thickness, tw = f.skin_t;
+    var sSurf = L + t / 2, sBot = L - t / 2, sIn = sSurf - tw, sCap0 = sBot - f.collar_h,
+      sCap1 = sCap0 + f.cap_t, parts = [];
+    function lam(n, s, Ro, Ri_, h, m, interior) {
+      if (m === undefined) {
+        var V = Math.PI * (Ro * Ro - Ri_ * Ri_) * h;
+        var A = 2 * Math.PI * (Ro * Ro - Ri_ * Ri_) + 2 * Math.PI * (Ro + Ri_) * h;
+        m = interior ? f.rho * f.infill * V : printMass(V, A, f.infill, f.t_shell);
+      }
+      var I = (pk === 0.25 ? 0.25 * m * (Ro * Ro + Ri_ * Ri_) : 0.5 * m * Ro * Ro) + m * h * h / 12;
+      parts.push({ n: n, m: m, s: s, I: I, Ro: Ro, Ri: Ri_, h: h });
+    }
+    lam("top_skin", sSurf - tw / 2, R, rb, tw);
+    lam("bot_skin", sBot + tw / 2, R, rp, tw);
+    lam("rim_ring", (sIn + sBot) / 2, R, Rr, t - 2 * tw);
+    lam("core", (sIn + sBot) / 2, Rr, rp, t - 2 * tw, undefined, true);
+    lam("rim_lip", sSurf + f.rim_h / 2, R, Ri, f.rim_h);
+    lam("boss", sIn - f.boss_h / 2, rbo, rb, f.boss_h);
+    lam("collar", (sCap0 + sBot) / 2, rp, rp - f.collar_wall, f.collar_h);
+    lam("cap", sCap0 + f.cap_t / 2, rp, rb, f.cap_t);
+    lam("clamp", sIn - f.boss_h / 2, 0.006, rb, 0, f.clamp_m);
+    var mPlate = 0, i; for (i = 0; i < parts.length; i++) mPlate += parts[i].m;
+    var rd = f.disc_d / 2, tDisc = f.disc_m / (f.rho_disc * Math.PI * (rd * rd - rb * rb)),
+      mDiscs = f.n_discs * f.disc_m, hs = f.n_discs * tDisc;
+    parts.push({ n: "discs", m: mDiscs, s: sCap1 + hs / 2, Ro: rd, Ri: rb, h: hs,
+      I: mDiscs * (rd * rd + rb * rb) / 4 + mDiscs * hs * hs / 12 });
+    var mb = mPlate + mDiscs, mss = 0, Jp = 0;
+    for (i = 0; i < parts.length; i++) { mss += parts[i].m * parts[i].s; Jp += parts[i].I + parts[i].m * parts[i].s * parts[i].s; }
+    var sc = mss / mb, Jo = 0;
+    for (i = 0; i < parts.length; i++) { var d = parts[i].s - sc; Jo += parts[i].I + parts[i].m * d * d; }
+    // the brief's "thin disc, I = 1/2 m r^2 + m L^2" form, for the stated comparison
+    var mp = mPlate - f.clamp_m, Jb = 0.5 * mp * R * R + mp * L * L + 0.25 * mDiscs * rd * rd + mDiscs * (sCap1 + hs / 2) * (sCap1 + hs / 2);
+    var cadv = cadBob(CAD_BOB.rho_design);   // design density lives in CAD_BOB, not the legacy FBD dict
+    return { parts: parts, m_plate: cadv.m_plate, m_discs: mDiscs, m_bob: cadv.m_bob,
+      s_com: cadv.s_com, J_own: cadv.J_own, J_pivot: cadv.J_pivot, cad: cadv,
+      m_plate_infill: mPlate, m_bob_infill: mb, s_com_infill: sc,
+      J_own_infill: Jo, J_pivot_infill: Jp,
+      J_brief: Jb, s_surf: sSurf, s_rim_top: sSurf + f.rim_h, s_bot: sBot, R: R, R_rim_in: Ri, t_disc: tDisc,
+      h_stack: hs, s_cap0: sCap0, s_cap1: sCap1, s_in: sIn, swept_R: Math.max(Math.sqrt(Math.pow(sSurf + f.rim_h, 2) + R * R), Math.sqrt(sCap0 * sCap0 + rp * rp)) };
+  }
+  // a placed weight on the working surface inside the rim: Ø50 cylinder of rho 7200 (steel/iron test weight)
+  function payloadProps(m, fb) {
+    var b = flatBob(fb); if (m <= 0) return { m: 0, s: 0, t: 0, J: 0, sTop: 0 };
+    var d = 0.050, rho = 7200, t = m / (rho * Math.PI * (d / 2) * (d / 2));
+    return { m: m, s: b.s_surf + t / 2, t: t, J: m * d * d / 16 + m * t * t / 12, sTop: b.s_surf + t };
+  }
   var QD = [427.4004929023249, 0.11118823121018721, 117.28446102809185, 0.3391572989508432], RD = 1.6257514991865385;
   var A_CAP = 8.64872069102314, J_MAX = 879.1041365134324, W_CAP = 0.6198690375616736 / (20 * 2e-3 / (2 * Math.PI));
   var W_CLIFF0 = null;
   function defaults() {
-    return { mb: 0.25, L: 0.30, Mc: 0.75, g: 9.81, Fc: 1.5, bc: 0.5, cp: 0.004, Cp: 0.002, teeth: 20, Iset: 2.0, Vbus: 24,
+    return { mb: null, payload: 0.0, payloadExt: false, bob: "flat", L: 0.30, Mc: 0.8943, g: 9.81, Fc: 1.5, bc: 0.5, cp: 0.004, Cp: 0.002, teeth: 20, Iset: 2.0, Vbus: 24,
       EA: 10e3, backlash: 0.1e-3, sigma_deg: 0.043, offset_deg: 0, usteps: 16, rod_d: 0.008, rho: 7850, E: 193e9,
       Ts: 0.005, fc_th: 30, xlim: 0.22, xlim_sw: 0.15, x_hard: 0.255, push_Ns: 0.08,
       ke: 10, Vsw: 0.30, Eref: 0.08, kxs: 2.3, kvs: 20, a_sw_cap: 7.8, thsw: 0.32, wsw: 5.7, eps_sw: 0.01,
@@ -69,14 +175,37 @@ var LCPE = (function () {
     if (W_CLIFF0 === null) { W_CLIFF0 = 1; var p0 = defaults(), d0 = { }; W_CLIFF0 = wCliff(p0, d0); }
     var d = {}, rl = p.L + 0.03, rd = p.rod_d;
     d.m_r = p.rho * Math.PI * rd * rd / 4 * rl; d.l_r = rl / 2 - 0.010;
-    d.J_r = d.m_r * d.l_r * d.l_r + d.m_r * rl * rl / 12; d.m_b = Math.max(0, p.mb);
+    d.J_r = d.m_r * d.l_r * d.l_r + d.m_r * rl * rl / 12;
+    // ---- bob: FLAT CIRCULAR PLATE geometry (default) or a legacy lump at L, plus the payload block
+    var bobMass = p.mb === null || p.mb === undefined ? null : Math.max(0, p.mb);
+    if (p.bob === "legacy") {
+      d.m_b = bobMass === null ? 0.25 : bobMass; d.s_b = p.L; d.J_bo = 0; d.fb = null;
+      if (p.payload > 0) { d.m_b += p.payload; }
+    } else {
+      var fb = flatBob({ L: p.L }); d.fb = fb;
+      var k = bobMass === null ? 1 : bobMass / fb.m_bob;     // a lighter/heavier print of the same plate
+      var mbB = fb.m_bob * k, sbB = fb.s_com, JbB = fb.J_own * k;
+      var m = mbB, sNum = mbB * sbB, Jpiv = JbB + mbB * sbB * sbB;   // Jpiv = inertia about the PIVOT
+      if (p.payload > 0) {
+        var pl = payloadProps(p.payload, { L: p.L });
+        var sPl = p.payloadExt ? pl.s : p.L, JPl = p.payloadExt ? pl.J : 0;
+        m += p.payload; sNum += p.payload * sPl; Jpiv += JPl + p.payload * sPl * sPl;
+      }
+      if (m > 1e-9) {
+        d.m_b = m; d.s_b = sNum / m; d.J_bo = Jpiv - m * d.s_b * d.s_b;   // own inertia about the combined CoM
+      } else {                                                 // bob slider at 0: bare arm, psi slaved to theta
+        d.m_b = 0; d.s_b = p.L; d.J_bo = 0;
+      }
+      d.mb_body = mbB; d.sb_body = sbB; d.Jb_body = JbB;
+    }
+    d.J_b = d.m_b * d.s_b * d.s_b + d.J_bo;
     var EI = p.E * Math.PI * Math.pow(rd, 4) / 64, Lf = p.L - 0.020;
     d.kappa = 3 * EI / Lf * Math.pow(p.L / Lf, 2);
-    d.c_s = d.m_b > 0 ? 2 * ZETA_S * Math.sqrt(d.kappa * d.m_b * p.L * p.L) : 0;
-    d.f_bend = d.m_b > 0 ? Math.sqrt(d.kappa / (d.m_b * p.L * p.L)) / (2 * Math.PI) : Infinity;
+    d.c_s = d.m_b > 0 ? 2 * ZETA_S * Math.sqrt(d.kappa * d.J_b) : 0;
+    d.f_bend = d.m_b > 0 ? Math.sqrt(d.kappa / d.J_b) / (2 * Math.PI) : Infinity;
     d.r = p.teeth * 2e-3 / (2 * Math.PI); d.J = JROT;
     d.Tpk0 = KDRV * KT * p.Iset; d.b_r = 2 * ZETA_R * Math.sqrt(NR * d.Tpk0 * d.J);
-    d.Mt = p.Mc + d.m_r + d.m_b; d.mh = d.m_r * d.l_r + d.m_b * p.L; d.Jp = d.J_r + d.m_b * p.L * p.L;
+    d.Mt = p.Mc + d.m_r + d.m_b; d.mh = d.m_r * d.l_r + d.m_b * d.s_b; d.Jp = d.J_r + d.J_b;
     d.Meff = d.Mt + d.J / (d.r * d.r);
     // motor-limit-derived firmware limits (recomputed whenever drive parameters change)
     // rotor speed cap -> cart speed cap: the design cap (0.62 m/s at 20T, 24 V, 2.0 A) scaled with the speed at which
@@ -135,7 +264,9 @@ var LCPE = (function () {
   // ---------- simulation object ----------
   function create(p) {
     var S = { p: p || defaults() }; S.d = derived(S.p); S.lqr = designLQR(S.p, S.d); S.reset = reset; S.step = step;
-    S.retune = function () { S.d = derived(S.p); if (S.d.m_b <= 0) { S.s[4] = S.s[2]; S.s[5] = S.s[3]; } S.lqr = designLQR(S.p, S.d); S.Iav = {}; };
+    S.retune = function () { var r0 = S.d.r; S.d = derived(S.p);
+      if (S.d.r !== r0) { S.s[6] *= r0 / S.d.r; S.s[7] *= r0 / S.d.r; }   // live pulley change: keep belt length r*phi (and rotor-vs-command lag) continuous
+      if (S.d.m_b <= 0) { S.s[4] = S.s[2]; S.s[5] = S.s[3]; } S.lqr = designLQR(S.p, S.d); S.Iav = {}; };
     S.push = function (dir) { S.pushT = 0.05; S.pushF = (dir || 1) * S.p.push_Ns / 0.05; };
     reset.call(S, "swing"); return S;
   }
@@ -143,7 +274,7 @@ var LCPE = (function () {
   function reset(start, th0) {
     var S = this, d = S.d, p = S.p;
     var th = start === "swing" ? Math.PI + p.pert : (th0 === undefined ? 0.05 : th0);
-    S.s = [0, 0, th, 0, th + (d.m_b > 0 ? d.m_b * p.g * p.L * Math.sin(th) / d.kappa : 0), 0, 0, 0];
+    S.s = [0, 0, th, 0, th + (d.m_b > 0 ? d.m_b * p.g * d.s_b * Math.sin(th) / d.kappa : 0), 0, 0, 0];
     S.start = start; S.mode = start === "swing" ? "SWING-UP" : "BALANCE"; S.t = 0; S.tick = 0; S.t_up = null;
     S.xh = 0; S.vh = 0; S.agen = 0; S.queue = [0]; S.aapp = 0; S.th_prev = null; S.th_un = th; S.thd_f = 0; S.ith = 0;
     S.phic = 0; S.lost = 0; S.reswings = 0; S.load = 0; S.maxload = 0; S.Fb = 0; S.tau = 0; S.Isup = 0; S.pushT = 0; S.pushF = 0;
@@ -166,11 +297,11 @@ var LCPE = (function () {
     var Fd = S.pushT > 0 ? S.pushF : 0;                            // horizontal push at the bob (or rod tip if bare)
     var Qx = Fb + Fstop + Fd - p.Fc * Math.tanh(xd / 0.005) - p.bc * xd;
     var Qth = -p.cp * thd - p.Cp * Math.tanh(thd / 0.01) + d.c_s * (psd - thd) + d.kappa * (ps - th) + d.m_r * p.g * d.l_r * Math.sin(th);
-    var Qps = -d.c_s * (psd - thd) - d.kappa * (ps - th) + d.m_b * p.g * p.L * Math.sin(ps), xdd, thdd, psdd;
-    var a_ = d.m_r * d.l_r * Math.cos(th), b_ = d.m_b * p.L * Math.cos(ps), Jb = d.m_b * p.L * p.L, J_r = d.J_r;
-    var rx = Qx + d.m_r * d.l_r * Math.sin(th) * thd * thd + d.m_b * p.L * Math.sin(ps) * psd * psd;
+    var Qps = -d.c_s * (psd - thd) - d.kappa * (ps - th) + d.m_b * p.g * d.s_b * Math.sin(ps), xdd, thdd, psdd;
+    var a_ = d.m_r * d.l_r * Math.cos(th), b_ = d.m_b * d.s_b * Math.cos(ps), Jb = d.J_b, J_r = d.J_r;
+    var rx = Qx + d.m_r * d.l_r * Math.sin(th) * thd * thd + d.m_b * d.s_b * Math.sin(ps) * psd * psd;
     if (Jb > 0) {
-      Qps += Fd * p.L * Math.cos(ps);
+      Qps += Fd * d.s_b * Math.cos(ps);
       var den = d.Mt - a_ * a_ / J_r - b_ * b_ / Jb; xdd = (rx - a_ * Qth / J_r - b_ * Qps / Jb) / den;
       thdd = (Qth - a_ * xdd) / J_r; psdd = (Qps - b_ * xdd) / Jb;
     } else {
@@ -239,20 +370,28 @@ var LCPE = (function () {
     }
     S.Etrue = 0.5 * d.Jp * S.s[3] * S.s[3] + d.mh * p.g * (Math.cos(S.s[2]) - 1);
   }
-  return { defaults: defaults, derived: derived, designLQR: designLQR, create: create, wrap: wrap, Iavail: Iavail };
+  return { defaults: defaults, derived: derived, designLQR: designLQR, create: create, wrap: wrap, Iavail: Iavail,
+    flatBob: flatBob, cadBob: cadBob, payloadProps: payloadProps, FBD: FBD, CAD_BOB: CAD_BOB };
 })();
 if (typeof module !== "undefined") module.exports = LCPE;
 
 </script>
-<script>window.LCPE_SWING_MAX=1.20;window.LCPE_SWING_MIN=0.10;window.LCPE_SWING_MARGINAL=0.70;</script>
+<script>window.LCPE_SWING_MAX=null;window.LCPE_SWING_MIN=0;window.LCPE_SWING_MARGINAL=null;window.LCPE_SWING_HARD=null;window.LCPE_SWING_ALSO="";</script>
 <script id="ui">
 // ===== UI (DOM only; all physics/firmware lives in the core script above) =====
 (function () {
   "use strict";
   var p = LCPE.defaults(), S = LCPE.create(p), paused = false, speed = 1, hist = [];
-  var SW_MAX = window.LCPE_SWING_MAX || null, SW_MIN = window.LCPE_SWING_MIN || 0, SW_MARG = window.LCPE_SWING_MARGINAL || null;   // filled in by the build from the headless sweep
+  // Filled in by the build from the headless + fine-grid sweeps on the FLAT BOB:
+  //   SW_MIN  = lightest total tip mass that catches
+  //   SW_MAX  = heaviest total tip mass that passes WITH MARGIN (peak travel <= ~0.216 m)
+  //   SW_MARG = start of the marginal band (passes in sim, peak travel 0.20-0.22 m, may trip the soft limit)
+  //   SW_HARD = step-loss ceiling (above this the motor cannot do it at all)
+  //   SW_ALSO = optional extra note (unused for the flat bob: the envelope is marginal, not disjoint)
+  var SW_MAX = window.LCPE_SWING_MAX || null, SW_MIN = window.LCPE_SWING_MIN || 0, SW_MARG = window.LCPE_SWING_MARGINAL || null,
+    SW_HARD = window.LCPE_SWING_HARD || null, SW_ALSO = window.LCPE_SWING_ALSO || "";
   var SL = [ // id, label, min, max, step, get, set, fmt, unit, group
-    ["mb", "Bob / tip mass (0 = bare arm)", 0, 1.25, 0.01, "kg"], ["L", "Pivot → bob length L", 0.20, 0.45, 0.005, "m"],
+    ["payload", "Payload on the flat top (0 = bare plate)", 0, 1.25, 0.01, "kg"], ["L", "Pivot → plate mid-plane L", 0.20, 0.45, 0.005, "m"],
     ["Mc", "Cart mass (motor+electronics)", 0.4, 1.5, 0.01, "kg"], ["g", "Gravity g", 1.6, 15, 0.01, "m/s²"],
     ["Fc", "Cart Coulomb friction", 0, 6, 0.05, "N"], ["bc", "Cart viscous friction", 0, 3, 0.05, "N·s/m"],
     ["cp", "Pivot viscous friction", 0, 0.02, 0.0005, "N·m·s"], ["Cp", "Pivot Coulomb friction", 0, 0.008, 0.0002, "N·m"],
@@ -267,19 +406,24 @@ if (typeof module !== "undefined") module.exports = LCPE;
     var h = "";
     SL.forEach(function (s) { var v = p[s[0]], sh = s[0] === "backlash" ? 1e3 : 1;
       h += '<div class="sl"><label>' + s[1] + ' <b id="v_' + s[0] + '"></b></label><input type="range" id="s_' + s[0] + '" min="' + s[2] + '" max="' + s[3] + '" step="' + s[4] + '" value="' + v + '"></div>'; });
+    h += '<div class="sl"><label><input type="checkbox" id="c_legacy"' + (p.bob === "legacy" ? " checked" : "") + '> legacy lumped bob (point mass at L, J = m L²) — before/after only</label></div>' +
+      '<div class="sl"><label><input type="checkbox" id="c_ext"' + (p.payloadExt ? " checked" : "") + '> payload as an extended disc (Ø50, its own inertia) instead of a point mass at L</label></div>';
     $("sliders").innerHTML = h; h = "";
     MAN.forEach(function (s) { h += '<div class="sl"><label>' + s[1] + ' <b id="v_m' + s[0] + '"></b></label><input type="range" id="s_m' + s[0] + '" min="' + s[2] + '" max="' + s[3] + '" step="' + s[4] + '" value="' + p.man[s[0]] + '"></div>'; });
     $("mansl").innerHTML = h;
     SL.forEach(function (s) { $("s_" + s[0]).addEventListener("input", function (e) { p[s[0]] = +e.target.value; S.retune(); label(); }); });
+    $("c_legacy").onchange = function (e) { p.bob = e.target.checked ? "legacy" : "flat"; S.retune(); label(); };
+    $("c_ext").onchange = function (e) { p.payloadExt = e.target.checked; S.retune(); label(); };
     MAN.forEach(function (s) { $("s_m" + s[0]).addEventListener("input", function (e) { p.man[s[0]] = +e.target.value; label(); }); });
-    $("ctrl").addEventListener("change", function (e) { p.ctrl = e.target.value; $("manbox").style.display = p.ctrl === "manual" ? "block" : "none";
-      if (p.ctrl === "manual") { var K = S.lqr.K; ["kx", "kv", "kth", "kthd"].forEach(function (k, i) { p.man[k] = +K[i].toFixed(2); $("s_m" + k).value = p.man[k]; }); } label(); });
+    $("ctrl").value = p.ctrl; $("manbox").style.display = p.ctrl === "manual" ? "block" : "none";   // keep the selector in sync after "Reset all"
+    $("ctrl").onchange = function (e) { p.ctrl = e.target.value; $("manbox").style.display = p.ctrl === "manual" ? "block" : "none";
+      if (p.ctrl === "manual") { var K = S.lqr.K; ["kx", "kv", "kth", "kthd"].forEach(function (k, i) { p.man[k] = +K[i].toFixed(2); $("s_m" + k).value = p.man[k]; }); } label(); };
     $("b_swing").onclick = function () { S.reset("swing"); hist = []; };
     $("b_up").onclick = function () { S.reset("upright", +$("th0").value); hist = []; };
     $("b_reset").onclick = function () { p = LCPE.defaults(); S.p = p; S.retune(); S.reset("swing"); hist = []; build(); };
     $("b_pl").onclick = function () { S.push(-1); }; $("b_pr").onclick = function () { S.push(1); };
     $("b_pause").onclick = function () { paused = !paused; this.textContent = paused ? "Run" : "Pause"; };
-    $("spd").addEventListener("change", function (e) { speed = +e.target.value; });
+    $("spd").onchange = function (e) { speed = +e.target.value; };   // (re)bound, not stacked, on every build()
     label();
   }
   function label() {
@@ -287,12 +431,20 @@ if (typeof module !== "undefined") module.exports = LCPE;
     MAN.forEach(function (s) { $("v_m" + s[0]).textContent = fmt(p.man[s[0]], s[4]); });
     var K = S.lqr.K, d = S.d;
     $("kinfo").innerHTML = "auto-LQR K = [" + K.map(function (v) { return v.toFixed(2); }).join(", ") + "] (" + S.lqr.iters + " Riccati iterations)<br>" +
-      "a_max " + d.a_max.toFixed(2) + " m/s², v_max " + d.v_max.toFixed(3) + " m/s, pull-out force " + (d.Tpk0 / d.r).toFixed(1) + " N, m_h " + d.mh.toFixed(4) + " kg·m, J_p " + d.Jp.toFixed(4) + " kg·m², rod " + (d.m_r * 1000).toFixed(0) + " g";
+      "a_max " + d.a_max.toFixed(2) + " m/s², v_max " + d.v_max.toFixed(3) + " m/s, pull-out force " + (d.Tpk0 / d.r).toFixed(1) + " N<br>" +
+      "m_h " + d.mh.toFixed(4) + " kg·m, J_p " + d.Jp.toFixed(4) + " kg·m², rod " + (d.m_r * 1000).toFixed(0) + " g<br>" +
+      (d.fb ? "FLAT BOB Ø" + (d.fb.R * 2e3).toFixed(0) + " mm: plate " + (d.fb.m_plate * 1e3).toFixed(0) + " g, bob " + (d.fb.m_bob * 1e3).toFixed(0) +
+        " g, CoM L_b " + (d.fb.s_com * 1e3).toFixed(0) + " mm, J_own " + (d.fb.J_own * 1e6).toFixed(1) + "e-6, J_pivot " + d.fb.J_pivot.toFixed(5) +
+        " kg·m²<br>tip now m_b " + d.m_b.toFixed(3) + " kg at s_b " + (d.s_b * 1e3).toFixed(0) + " mm, own J " + (d.J_bo * 1e6).toFixed(1) + "e-6 kg·m²"
+        : "legacy lump " + d.m_b.toFixed(2) + " kg at L");
     var cap = $("cap");
-    if (SW_MAX !== null && isDefaultDrive() && (p.mb > SW_MAX + 1e-9 || p.mb < SW_MIN - 1e-9)) { cap.className = "warn"; cap.textContent = "SWING-UP OUTSIDE CAPABILITY for " + p.mb.toFixed(2) + " kg (headless sweep: swing-up passes only for " + SW_MIN.toFixed(2) + "–" + SW_MAX.toFixed(2) + " kg at the default drive; below: energy pump stalls on the light arm, above: motor step loss). Use 'Start upright (hand release)': balance still works."; }
-    else if (SW_MARG !== null && isDefaultDrive() && p.mb > SW_MARG + 1e-9) { cap.className = "note"; cap.textContent = "Swing-up passes in the sim for " + p.mb.toFixed(2) + " kg but with thin margin (load-angle use > 0.8 above " + SW_MARG.toFixed(2) + " kg). Hand release is safer on hardware."; }
+    var mTip = S.d.m_b;
+    var f1 = function (v) { return v.toFixed(2); };
+    if (SW_MAX !== null && isDefaultDrive() && mTip < SW_MIN - 1e-9) { cap.className = "warn"; cap.textContent = "SWING-UP OUTSIDE CAPABILITY at " + mTip.toFixed(2) + " kg total tip mass: below " + f1(SW_MIN) + " kg the energy pump stalls before the arm catches. Use 'Start upright (hand release)': balance still works at every mass."; }
+    else if (SW_HARD !== null && isDefaultDrive() && mTip > SW_HARD + 1e-9) { cap.className = "warn"; cap.textContent = "SWING-UP OUTSIDE CAPABILITY at " + mTip.toFixed(2) + " kg total tip mass: above " + f1(SW_HARD) + " kg the belt hits the 44 N pull-out ceiling during the energy pump and the rotor loses steps (truth sim). Balance still works at this mass — start upright by hand. " + (SW_ALSO || ""); }
+    else if (SW_MARG !== null && isDefaultDrive() && mTip > SW_MARG + 1e-9) { cap.className = "note"; cap.textContent = "Swing-up is MARGINAL at " + mTip.toFixed(2) + " kg total tip mass: it passes in the sim above " + f1(SW_MARG) + " kg, but peak cart travel sits at 0.20–0.22 m against the ±0.22 m soft limit, so some payloads 0.01 kg apart trip it by a fraction of a millimetre. Verified reliable only up to " + f1(SW_MARG) + " kg. Hand release is safer on hardware."; }
     else if (SW_MAX !== null && !isDefaultDrive()) { cap.className = "note"; cap.textContent = "Drive/geometry changed from the design: the swing-up limit (" + SW_MAX.toFixed(2) + " kg at default) is not re-verified; watch torque use and lost steps."; }
-    else { cap.className = "ok"; cap.textContent = "Swing-up within the verified range (" + SW_MIN.toFixed(2) + "–" + (SW_MAX === null ? "?" : SW_MAX.toFixed(2)) + " kg at the default drive)."; }
+    else { cap.className = "ok"; cap.textContent = "Swing-up within the verified range (" + SW_MIN.toFixed(2) + "–" + (SW_MAX === null ? "?" : SW_MAX.toFixed(2)) + " kg total tip mass at the default drive, peak cart travel ≤ 0.216 m; above that it is marginal up to " + (SW_HARD === null ? "?" : SW_HARD.toFixed(2)) + " kg at best. Bare flat plate = " + (S.d.fb ? S.d.fb.m_bob.toFixed(2) : "?") + " kg)."; }
   }
   function isDefaultDrive() { var q = LCPE.defaults(); return ["L", "Mc", "g", "teeth", "Iset", "Vbus", "Fc", "bc", "cp", "Cp", "EA", "backlash"].every(function (k) { return Math.abs(p[k] - q[k]) < 1e-12; }); }
   var cv, cx, pt, px;
@@ -303,10 +455,38 @@ if (typeof module !== "undefined") module.exports = LCPE;
     [[-p.xlim, "#c9a227"], [p.xlim, "#c9a227"], [-p.x_hard, "#d9534f"], [p.x_hard, "#d9534f"]].forEach(function (m) { cx.fillStyle = m[1]; cx.fillRect(ox + m[0] * sc - 1, oy - 12, 2, 24); });
     var cxp = ox + s[0] * sc; cx.fillStyle = "#1f6f8b"; cx.fillRect(cxp - 0.05 * sc, oy - 14, 0.10 * sc, 28);
     cx.fillStyle = "#555"; cx.fillRect(cxp - 0.021 * sc, oy + 14, 0.042 * sc, 0.042 * sc);
-    var Lp = p.L, bx = cxp + Math.sin(s[4]) * Lp * sc, by = oy - Math.cos(s[4]) * Lp * sc;
-    var tx = cxp + Math.sin(s[2]) * (Lp + 0.02) * sc, ty = oy - Math.cos(s[2]) * (Lp + 0.02) * sc;
+    var Lp = d.m_b > 0 ? p.L : p.L, bx = cxp + Math.sin(s[4]) * Lp * sc, by = oy - Math.cos(s[4]) * Lp * sc;
+    var tx = cxp + Math.sin(s[2]) * (p.L + 0.02) * sc, ty = oy - Math.cos(s[2]) * (p.L + 0.02) * sc;
     cx.strokeStyle = "#c8d3dd"; cx.lineWidth = 3; cx.beginPath(); cx.moveTo(cxp, oy); cx.lineTo(d.m_b > 0 ? bx : tx, d.m_b > 0 ? by : ty); cx.stroke();
-    if (d.m_b > 0) { var rr = 6 + 14 * Math.cbrt(d.m_b / 1.25); cx.fillStyle = "#e8a33d"; cx.beginPath(); cx.arc(bx, by, rr, 0, 7); cx.fill(); }
+    if (d.m_b > 0 && d.fb) {
+      // ---- FLAT CIRCULAR BOB, drawn to scale in the swing plane. The plate's normal lies ALONG the arm, so seen
+      // edge-on it is a 120 mm wide x 10 mm thick bar. Everything sits at its true distance from the pivot:
+      // local y = (L - s) * sc, so the working surface (s = L + 5 mm) is at local -y and the pocket
+      // (s = L - 5 .. L - 23 mm) at local +y. Local +y is turned toward the pivot by cx.rotate(psi), which puts
+      // the flat top UP when the arm is inverted (psi = 0) and DOWN when hanging, exactly as the hardware does.
+      var f = d.fb, sc_ = sc, sY = function (sDist) { return (p.L - sDist) * sc_; };
+      var R = f.R * sc_, tHalf = sY(f.s_bot), lipH = sY(f.s_surf) - sY(f.s_rim_top), rimW = 0.004 * sc_, rp = 0.031 * sc_;
+      cx.save(); cx.translate(bx, by); cx.rotate(s[4]);
+      cx.fillStyle = "#e8a33d"; cx.strokeStyle = "#8a5410"; cx.lineWidth = 1;          // plate body, 10 mm working thickness
+      cx.fillRect(-R, -tHalf, 2 * R, 2 * tHalf); cx.strokeRect(-R, -tHalf, 2 * R, 2 * tHalf);
+      cx.fillStyle = "#f2c46b"; cx.strokeStyle = "#8a5410";                             // 4 x 4 mm raised rim on the flat top
+      cx.fillRect(-R, sY(f.s_rim_top), rimW, lipH); cx.fillRect(R - rimW, sY(f.s_rim_top), rimW, lipH);
+      cx.strokeRect(-R, sY(f.s_rim_top), rimW, lipH); cx.strokeRect(R - rimW, sY(f.s_rim_top), rimW, lipH);
+      cx.fillStyle = "#b0741f"; cx.strokeStyle = "#7a4c12";                             // pocket collar below the plate
+      cx.fillRect(-rp, sY(f.s_bot), 2 * rp, sY(f.s_cap0) - sY(f.s_bot));
+      cx.strokeRect(-rp, sY(f.s_bot), 2 * rp, sY(f.s_cap0) - sY(f.s_bot));
+      cx.fillStyle = "#6f7f8c"; cx.strokeStyle = "#48555f";                             // 2 x 100 g cast-iron slotted discs
+      cx.fillRect(-0.025 * sc_, sY(f.s_cap1 + f.h_stack), 0.050 * sc_, f.h_stack * sc_);
+      cx.strokeRect(-0.025 * sc_, sY(f.s_cap1 + f.h_stack), 0.050 * sc_, f.h_stack * sc_);
+      if (p.payload > 0) {                                                             // payload inside the rim, on the flat top
+        var pl = LCPE.payloadProps(p.payload, { L: p.L }), ph = Math.max(2, pl.t * sc_),
+          pw = Math.min(2 * R - 2 * rimW, 0.050 * sc_);
+        cx.fillStyle = "#cfd8e0"; cx.strokeStyle = "#5b6b7a";
+        cx.fillRect(-pw / 2, sY(f.s_surf) - lipH - ph, pw, ph);
+        cx.strokeRect(-pw / 2, sY(f.s_surf) - lipH - ph, pw, ph);
+      }
+      cx.restore();
+    } else if (d.m_b > 0) { var rr = 6 + 14 * Math.cbrt(d.m_b / 1.25); cx.fillStyle = "#e8a33d"; cx.beginPath(); cx.arc(bx, by, rr, 0, 7); cx.fill(); }
     cx.fillStyle = "#fff"; cx.beginPath(); cx.arc(cxp, oy, 4, 0, 7); cx.fill();
     if (S.pushT > 0) { cx.fillStyle = "#ff5"; cx.font = "bold 18px sans-serif"; cx.fillText(S.pushF > 0 ? "→ push" : "push ←", bx - 30, by - 22); }
     cx.fillStyle = S.mode === "BALANCE" ? "#5cd65c" : S.mode === "SWING-UP" ? "#38d6f5" : "#ff6b6b"; cx.font = "bold 16px sans-serif";
